@@ -37,7 +37,7 @@ Init ==
   /\ meterStates \in [Meters -> {"normal", "anomaly"}]
   /\ events = << >>
   /\ alerts = {}
-  /\ billingStates = [m \in Meters |-> "active"]
+  /\ billingStates = [m \in Meters |-> IF meterStates[m] = "anomaly" THEN "paused" ELSE "active"]
   /\ currentTime = 0
 
 DetectAnomaly ==

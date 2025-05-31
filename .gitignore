@@ -8,7 +8,6 @@
 *.aux
 *.log
 *.pdf
-*.png
 *.out
 
 # IDE and editor files

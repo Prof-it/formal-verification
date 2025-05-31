@@ -1,0 +1,17 @@
+graph TD
+    A[📝 Specification]
+    B[🔍 Model Checking]
+    C[✅ Theorem Proving]
+    D[⚙️ Runtime]
+    
+    A --> B
+    B -- ❌ Counterexample --> A
+    B -- ✅ --> C
+    C --> D
+    C -.-> C
+    C -- 🔄 --> A
+    
+    style A fill:#f9f,stroke:#333,stroke-width:2px
+    style B fill:#bbf,stroke:#333,stroke-width:2px
+    style C fill:#bfb,stroke:#333,stroke-width:2px
+    style D fill:#fbb,stroke:#333,stroke-width:2px

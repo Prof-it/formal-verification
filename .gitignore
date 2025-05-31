@@ -1,0 +1,30 @@
+# TLA+ Toolbox files
+*.tla.state
+*.tla.backup
+*.tla.history
+*.tla.log
+
+# Build and temporary files
+*.aux
+*.log
+*.pdf
+*.png
+*.out
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# TLC model checking files
+*.tla.state
+*.tla.backup
+*.tla.history
+*.tla.log
+*.tla.stats
+*.tla.results

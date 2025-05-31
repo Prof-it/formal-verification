@@ -38,3 +38,4 @@ Thumbs.db
 **/tla_modules/**/*.toolbox/
 **/tla_modules/**/*.toolbox/*
 **/tla_modules/**/*.toolbox/**/*
+tla_modules/states/*

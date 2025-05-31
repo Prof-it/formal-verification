@@ -34,7 +34,7 @@ begin
 end algorithm; *)
 
 Init == 
-  /\ meterStates = [m \in Meters |-> "normal"]
+  /\ meterStates \in [Meters -> {"normal", "anomaly"}]
   /\ events = << >>
   /\ alerts = {}
   /\ billingStates = [m \in Meters |-> "active"]

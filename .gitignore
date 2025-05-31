@@ -28,3 +28,13 @@ Thumbs.db
 *.tla.log
 *.tla.stats
 *.tla.results
+
+# Toolbox files
+**/.toolbox/
+**/.toolbox/*
+**/*.toolbox/
+**/*.toolbox/*
+**/*.toolbox/**/*
+**/tla_modules/**/*.toolbox/
+**/tla_modules/**/*.toolbox/*
+**/tla_modules/**/*.toolbox/**/*

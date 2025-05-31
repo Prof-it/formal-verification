@@ -1,23 +1,26 @@
+-------------------------------- MODULE EnergyMeter --------------------------------
 EXTENDS Integers, Sequences, TLC
 
 CONSTANTS Meters
-VARIABLES meterStates, events, alerts, billingStates
+VARIABLES meterStates, events, alerts, billingStates, currentTime
 
 (*--algorithm EnergyMeter
 variables
   meterStates = [m \in Meters |-> "normal"],
   events = << >>,
   alerts = {},
-  billingStates = [m \in Meters |-> "active"];
+  billingStates = [m \in Meters |-> "active"],
+  currentTime = 0;
 
 begin
   DetectAnomaly:
     either \E m \in Meters:
       meterStates[m] = "anomaly" ->
         events' := Append(events, "anomaly_detected"),
-        alerts' := alerts \cup {CurrentTimestamp},
+        alerts' := alerts \cup {currentTime},
         meterStates' := meterStates,
-        billingStates' := billingStates;
+        billingStates' := billingStates,
+        currentTime' := currentTime + 1;
 
   HandleAnomaly:
     either \E m \in Meters:
@@ -25,7 +28,8 @@ begin
         meterStates' := meterStates,
         billingStates' := [billingStates EXCEPT ![m] = "paused"],
         events' := events,
-        alerts' := alerts;
+        alerts' := alerts,
+        currentTime' := currentTime;
 
 end algorithm; *)
 
@@ -34,14 +38,16 @@ Init ==
   /\ events = << >>
   /\ alerts = {}
   /\ billingStates = [m \in Meters |-> "active"]
+  /\ currentTime = 0
 
 DetectAnomaly ==
   \E m \in Meters:
     meterStates[m] = "anomaly" /\
     events' = Append(events, "anomaly_detected") /\
-    alerts' = alerts \cup {CurrentTimestamp} /\
+    alerts' = alerts \cup {currentTime} /\
     meterStates' = meterStates /\
-    billingStates' = billingStates
+    billingStates' = billingStates /\
+    currentTime' = currentTime + 1
 
 HandleAnomaly ==
   \E m \in Meters:
@@ -49,18 +55,20 @@ HandleAnomaly ==
     meterStates' = meterStates /\
     billingStates' = [billingStates EXCEPT ![m] = "paused"] /\
     events' = events /\
-    alerts' = alerts
+    alerts' = alerts /\
+    currentTime' = currentTime
 
 Next == DetectAnomaly \/ HandleAnomaly
 
-Spec == Init \/ [][Next]_<<meterStates, events, alerts, billingStates>>
+Spec == Init \/ [][Next]_<<meterStates, events, alerts, billingStates, currentTime>>
 
 (* Properties *)
 TypeOK == 
   meterStates \in [Meters -> {"normal", "anomaly"}] /\
   billingStates \in [Meters -> {"active", "paused"}] /\
-  events \in Seq(String) /\
-  alerts \in SetOf(Nat)
+  events \in Seq(STRING) /\
+  alerts \in SUBSET Nat /\
+  currentTime \in Nat
 
 NoBillingWhenAnomaly ==
   \A m \in Meters:
@@ -69,3 +77,5 @@ NoBillingWhenAnomaly ==
 AnomalyDetectedImpliesAlert ==
   \A m \in Meters:
     meterStates[m] = "anomaly" => alerts /= {}
+
+=============================================================================

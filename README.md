@@ -19,7 +19,7 @@ The example system models a smart grid infrastructure that integrates:
 
 The formal verification process follows this workflow:
 
-![Workflow Diagram](workflow/workflow.png)
+![Workflow Diagram](workflow/workflow.drawio.png)
 
 ## Module Structure
 
@@ -47,10 +47,95 @@ The system is divided into four main TLA+ modules:
 
 ## Setup and Verification
 
-1. Install TLA+ Toolbox from https://lamport.azurewebsites.net/tla/toolbox.html
-2. Open the `SmartGrid` specification in TLA+ Toolbox
-3. Run TLC model checker using the provided configuration files
-4. Verify properties in each module's configuration file
+### TLA+ Module Structure
+Each TLA+ module follows this structure:
+
+```tla
+-------------------------------- MODULE ModuleName --------------------------------
+EXTENDS Integers, Sequences, TLC, String, Nat
+
+CONSTANTS YourConstants
+VARIABLES YourVariables
+
+Init == 
+  /\ YourInitialConditions
+
+Next == 
+  YourNextStateRelation
+
+Spec == Init \/ [][Next]_vars
+
+=============================================================================
+```
+
+### Running TLC
+1. Open TLA+ Toolbox
+2. Create or open a specification:
+   - Go to File → New → Specification
+   - To verify a module, choose the module file
+   - Enter the exact module name
+   - Load the module and let the parser check it
+
+3. Add all modules:
+   - Right-click on the specification
+   - Select "Add Module"
+   - Add:
+     - EnergyMeter.tla
+     - P2PNetwork.tla
+     - Blockchain.tla
+     - QuantumTeleportation.tla
+
+4. Create models for each module:
+   - Right-click on each module
+   - Select "New Model Using Module"
+   - Name it appropriately (e.g., "EnergyMeter Model")
+   - Click "OK"
+
+5. Configure each model:
+   - Click on the model in the left panel
+   - In the right panel, click "Model Overview"
+   - Set the following:
+     - "What is the behavior spec?" → "Spec"
+     - "What is the model checking task?" → "Check the temporal formula Spec"
+     - "What temporal properties should be checked?" → Add all properties from the .cfg files
+     - "What invariants should be checked?" → Add all invariants from the .cfg files
+
+6. Run the verification:
+   - Click the "Run Model" button (green play icon)
+   - Wait for TLC to complete the verification
+   - Check the results in the "Model Checking Results" tab
+
+### Common Issues
+- If TLC runs out of memory:
+  - Increase the heap size in TLA+ Toolbox preferences
+  - Set a larger value for "Maximum heap size (MB)"
+
+- If state space is too large:
+  - Use the "Finite State Space" option in model configuration
+  - Limit the number of states to check
+  - Use symmetry reduction if applicable
+
+### Interpreting Results
+- "No errors found" means all properties are satisfied
+- "State space exhausted" means TLC couldn't explore all states
+- "Counterexample found" indicates a property violation
+- Check "Model Checking Results" for detailed information
+
+### Debugging Tips
+- Use the "Step" feature to manually explore states
+- Add "Print" statements in your specification
+- Use "Debug" mode to pause at specific states
+- Check TLC statistics for performance issues
+
+### TLA+ Best Practices
+1. Use proper module headers and footers
+2. Document your constants and variables
+3. Use meaningful variable names
+4. Keep specifications modular and reusable
+5. Add comments for complex operations
+6. Use type annotations where possible
+7. Test with small models first
+8. Use TLC statistics to optimize performance
 
 ## Key Properties Verified
 

@@ -1,4 +1,5 @@
-EXTENDS Integers, Sequences, TLC, EnergyMeter
+-------------------------------- MODULE P2PNetwork --------------------------------
+EXTENDS Integers, Sequences, TLC, EnergyMeter, Nat
 
 CONSTANTS Nodes, AuthorityNode
 VARIABLES messages, routes, alerts
@@ -35,16 +36,17 @@ begin
 end algorithm; *)
 
 Init == 
-  messages = << >> /\
-  routes = {} /\
-  alerts = {}
+  /\ messages = << >>
+  /\ routes = {}
+  /\ alerts = {}
 
 SendAlert ==
   \E meter \in Nodes:
     meter.type = "meter" /\ meter.state = "anomaly" /\
-    messages' = Append(messages, [src |-> meter.id, dest |-> AuthorityNode, type |-> "alert"]) /\
+    messages' = Append(messages, [src |-> meter.id, dest |-> AuthorityNode, type |-> "alert", timestamp |-> currentTime]) /\
     routes' = routes /\
-    alerts' = alerts
+    alerts' = alerts /\
+    currentTime' = currentTime + 1
 
 RouteMessage ==
   \E msg \in messages:
@@ -79,3 +81,5 @@ MessageDeliveryInvariant ==
 NoDuplicateMessages ==
   \A msg1, msg2 \in messages:
     msg1 /= msg2 => msg1.src /= msg2.src \/ msg1.dest /= msg2.dest
+
+=============================================================================

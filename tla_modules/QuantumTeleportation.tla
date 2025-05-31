@@ -1,4 +1,5 @@
-EXTENDS Integers, Sequences, TLC, Blockchain
+-------------------------------- MODULE QuantumTeleportation --------------------------------
+EXTENDS Integers, Sequences, TLC, Blockchain, Nat
 
 CONSTANTS TrustedParties
 VARIABLES aliceStates, bobStates, channelStates, transferred, auditTrails
@@ -94,3 +95,5 @@ TeleportationIntegrity ==
 AuditTrailCompleteness ==
   transferred = TRUE => \E t \in auditTrails:
     t[1] = "BB4P-transfer"
+
+=============================================================================

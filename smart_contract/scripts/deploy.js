@@ -6,13 +6,14 @@ async function main() {
   console.log("Deploying contracts with the account:", deployer.address);
   console.log("Account balance:", (await hre.ethers.provider.getBalance(deployer.address)).toString());
 
-  const Blockchain = await hre.ethers.getContractFactory("Blockchain");
-  const blockchain = await Blockchain.deploy();
+  const AnomalyAlert = await hre.ethers.getContractFactory("AnomalyAlert");
+  console.log("Deploying AnomalyAlert...");
+  const anomalyAlert = await AnomalyAlert.deploy();
 
-  // await blockchain.deployed(); // deprecated
-  await blockchain.waitForDeployment();
+  await anomalyAlert.waitForDeployment();
 
-  console.log("Blockchain contract deployed to:", await blockchain.getAddress());
+  console.log("AnomalyAlert contract deployed to:", await anomalyAlert.getAddress());
+  console.log("Transaction hash:", anomalyAlert.deploymentTransaction().hash);
 }
 
 main()

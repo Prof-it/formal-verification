@@ -1,0 +1,17 @@
+{
+  "name": "smart-contract-project",
+  "version": "1.0.0",
+  "description": "Smart contract for blockchain based on TLA+ model",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.5"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

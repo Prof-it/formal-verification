@@ -38,3 +38,11 @@ Thumbs.db
 **/tla_modules/**/*.toolbox/*
 **/tla_modules/**/*.toolbox/**/*
 tla_modules/states/*
+
+# Smart contract files
+smart_contract/node_modules/
+smart_contract/artifacts/
+smart_contract/cache/
+smart_contract/build/
+smart_contract/package-lock.json
+

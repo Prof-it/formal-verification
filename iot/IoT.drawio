@@ -1,0 +1,52 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" version="27.1.4">
+  <diagram name="Seite-1" id="cLBjPwccnPh11wz8qvCx">
+    <mxGraphModel dx="1426" dy="772" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="zIm20l5blln_rBkpzBQ2-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="zIm20l5blln_rBkpzBQ2-1" target="zIm20l5blln_rBkpzBQ2-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-1" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;&lt;b&gt;Sensor&amp;nbsp; Node.&amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/font&gt;" style="shape=image;html=1;verticalAlign=top;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;image=https://cdn3.iconfinder.com/data/icons/energy-and-power-glyph-24-px/24/Analog_device_gauge_gauge_meter_pressure_gauge_speedometer_1-128.png" vertex="1" parent="1">
+          <mxGeometry x="350" y="490" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-5" value="&quot;anomaly_detected&quot;" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.alert;" vertex="1" parent="1">
+          <mxGeometry x="429" y="440" width="33.92" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;curved=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="zIm20l5blln_rBkpzBQ2-1" target="zIm20l5blln_rBkpzBQ2-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="550" y="540" />
+              <mxPoint x="550" y="630" />
+              <mxPoint x="390" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-7" value="&lt;font style=&quot;font-size: 13px;&quot;&gt;normal&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="440" y="518" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="zIm20l5blln_rBkpzBQ2-8" target="zIm20l5blln_rBkpzBQ2-15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-8" value="&lt;h3&gt;&lt;font style=&quot;color: rgb(0, 0, 0); font-size: 15px;&quot;&gt;Edge Controller&lt;/font&gt;&lt;/h3&gt;" style="sketch=0;outlineConnect=0;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.iot_thing_plc;fillColor=light-dark(#000000, #198cc4);fontColor=#ffffff;strokeColor=#006EAF;" vertex="1" parent="1">
+          <mxGeometry x="351" y="310" width="78" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-15" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;&lt;b style=&quot;&quot;&gt;Business System&lt;/b&gt;&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;font-size: 15px;&quot;&gt;&lt;b style=&quot;&quot;&gt;/ Cloud&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="150" width="160" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-16" value="&lt;ul&gt;&lt;li&gt;Measure Data&lt;/li&gt;&lt;li&gt;Detects Anomaly&lt;/li&gt;&lt;/ul&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="205" y="500" width="150" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-17" value="&lt;ul&gt;&lt;li&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Collects events&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Validates Anomaly&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Resets event buffer&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="195" y="309" width="170" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-19" value="&lt;font style=&quot;font-size: 13px;&quot;&gt;summary report&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="440" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="zIm20l5blln_rBkpzBQ2-20" value="&lt;ul&gt;&lt;li&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Receives report&lt;/span&gt;&lt;/li&gt;&lt;li&gt;Triggers alerts&lt;/li&gt;&lt;/ul&gt;" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="195" y="180" width="150" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

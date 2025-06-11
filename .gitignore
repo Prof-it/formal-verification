@@ -38,6 +38,7 @@ Thumbs.db
 **/tla_modules/**/*.toolbox/*
 **/tla_modules/**/*.toolbox/**/*
 tla_modules/states/*
+tla_modules/tla2tools.jar
 
 # Smart contract files
 smart_contract/node_modules/
@@ -46,3 +47,6 @@ smart_contract/cache/
 smart_contract/build/
 smart_contract/package-lock.json
 
+**/*.drawio
+iot/IoT.drawio
+p2p/p2p.drawio

@@ -28,6 +28,8 @@ Next == SensorReportAnomaly \/ FixAnomaly
 
 Spec == /\ Init 
         /\ [][Next]_<<sensorStates, events>>
+        /\ WF_<<sensorStates, events>>(SensorReportAnomaly)
+        /\ WF_<<sensorStates, events>>(FixAnomaly)
 
 (* Properties *)
 TypeOK == /\ sensorStates \in [Sensors -> {"normal", "anomaly"}]
@@ -46,6 +48,4 @@ AnomalyAlwaysReported == \A s \in Sensors:
 
 
 =============================================================================
-       (* /\ WF_<<sensorStates, events>>(SensorMeasureAnomaly)
-        /\ WF_<<sensorStates, events>>(SensorReportAnomaly)
-        /\ WF_<<sensorStates, events>>(ControllerProcessAnomaly) \/ FixAnomaly*)         
+       (* *)         

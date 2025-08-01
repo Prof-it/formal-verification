@@ -1,64 +1,40 @@
 -------------------------------- MODULE Blockchain --------------------------------
-EXTENDS Integers, Sequences, TLC, P2PNetwork, Nat
+EXTENDS Integers, Sequences, TLC, Naturals
 
 CONSTANTS Customers
 VARIABLES ledger, contractStates, actions
-
-(*--algorithm Blockchain
-variables
-  ledger = << >>,
-  contractStates = [c \in Customers |-> "ready"],
-  actions = << >>;
-
-begin
-  RecordAnomaly:
-    either \E event \in alerts:
-      event.type = "anomaly" ->
-        ledger' := Append(ledger, event),
-        contractStates' := contractStates,
-        actions' := actions;
-
-  TriggerContract:
-    either \E entry \in ledger:
-      entry.type = "anomaly" ->
-        contractStates' := [contractStates EXCEPT ![entry.customerId] = "actioned"],
-        actions' := Append(actions, ["pauseBilling", entry.customerId]),
-        ledger' := ledger;
-
-end algorithm; *)
+EventTypesStrings == {"anomaly", "pauseBilling"}
+States == {"ready", "actioned"}
 
 Init == 
   /\ ledger = << >>
   /\ contractStates = [c \in Customers |-> "ready"]
   /\ actions = << >>
-  /\ currentTime = 0
 
-RecordAnomaly ==
-  \E event \in alerts:
-    event.type = "anomaly" /\
-    ledger' = Append(ledger, event) /\
-    contractStates' = contractStates /\
-    actions' = actions /\
-    currentTime' = currentTime + 1
+RecordAnomaly(customer, eventTypeStr) == 
+    /\ eventTypeStr = "anomaly"
+    /\ ledger' = Append(ledger, [type |-> eventTypeStr, customerId |-> customer])
+    /\ UNCHANGED <<contractStates, actions>>
 
 TriggerContract ==
-  \E entry \in ledger:
-    entry.type = "anomaly" /\
-    contractStates' = [contractStates EXCEPT ![entry.customerId] = "actioned"] /\
-    actions' = Append(actions, ["pauseBilling", entry.customerId]) /\
-    ledger' = ledger /\
-    currentTime' = currentTime
+  \E i \in 1..Len(ledger):
+    /\ ledger[i].type = "anomaly"
+    /\ contractStates' = [contractStates EXCEPT ![ledger[i].customerId] = "actioned"]
+    /\ actions' = Append(actions, [type |->  "pauseBilling", customerId |->  ledger[i].customerId])
+    /\ ledger' = ledger
 
-Next == RecordAnomaly \/ TriggerContract
+Next ==
+    (\E c \in Customers, etStr \in EventTypesStrings: RecordAnomaly(c, etStr))
+    \/ TriggerContract
 
-Spec == Init \/ [][Next]_<<ledger, contractStates, actions, currentTime>>
+vars == <<ledger, contractStates, actions>>
+Spec == Init /\ [][Next]_vars
 
 (* Properties *)
 TypeOK == 
-  ledger \in Seq([type: String, customerId: Customers]) /\
-  contractStates \in [Customers -> {"ready", "actioned"}] /\
-  actions \in Seq([String, Customers]) /\
-  currentTime \in Nat
+  /\ ledger \in Seq([type: {"ready", "actioned"}, customerId: Customers]) 
+  /\ contractStates \in [Customers -> States ]
+  /\ actions \in Seq([type: {"ready", "actioned"}, customerId: Customers])
 
 LedgerImmutability ==
   \A i \in 1..Len(ledger):
@@ -67,7 +43,12 @@ LedgerImmutability ==
 
 ContractStateInvariant ==
   \A c \in Customers:
-    contractStates[c] = "actioned" => \E entry \in ledger:
-      entry.customerId = c /\ entry.type = "anomaly"
+    contractStates[c] = "actioned" 
+            => \E i \in 1..Len(ledger):
+                ledger[i].customerId = c /\ ledger[i].type = "anomaly"
+
 
 =============================================================================
+(* Renamed to avoid clash, parameterized *)
+    (* Action is only enabled if eventTypeStr is "anomaly" and leads to a state change. *)
+    (* Otherwise, this specific action instance is disabled. *)

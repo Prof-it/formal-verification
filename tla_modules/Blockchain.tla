@@ -31,21 +31,17 @@ vars == <<ledger, contractStates, actions>>
 Spec == Init /\ [][Next]_vars
 
 (* Properties *)
+LedgerImmutability == \A i \in 1..Len(ledger):
+                         \A j \in i..Len(ledger): ledger[i] = ledger[j]
+
+ContractStateInvariant == \A c \in Customers: contractStates[c] = "actioned" 
+                            => \E i \in 1..Len(ledger):
+                                ledger[i].customerId = c /\ ledger[i].type = "anomaly"
+                
 TypeOK == 
   /\ ledger \in Seq([type: {"ready", "actioned"}, customerId: Customers]) 
   /\ contractStates \in [Customers -> States ]
   /\ actions \in Seq([type: {"ready", "actioned"}, customerId: Customers])
-
-LedgerImmutability ==
-  \A i \in 1..Len(ledger):
-    \A j \in i..Len(ledger):
-      ledger[i] = ledger[j]
-
-ContractStateInvariant ==
-  \A c \in Customers:
-    contractStates[c] = "actioned" 
-            => \E i \in 1..Len(ledger):
-                ledger[i].customerId = c /\ ledger[i].type = "anomaly"
 
 INVARIANTS ==
   TypeOK /\ LedgerImmutability /\ ContractStateInvariant

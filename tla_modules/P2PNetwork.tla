@@ -1,85 +1,67 @@
 -------------------------------- MODULE P2PNetwork --------------------------------
-EXTENDS Integers, Sequences, TLC, EnergyMeter, Nat
+EXTENDS Integers, Sequences, TLC, Naturals, FiniteSets
 
-CONSTANTS Nodes, AuthorityNode
-VARIABLES messages, routes, alerts
+CONSTANTS ControllerNode, AuthorityNode, Payloads, MessageType
+Nodes == {ControllerNode, AuthorityNode}
+VARIABLES messages, alerts
+RemoveElement(s, e) ==
+    IF \E i \in 1..Len(s) : s[i] = e
+    THEN
+        LET index == CHOOSE i \in 1..Len(s) : s[i] = e
+        IN SubSeq(s, 1, index - 1) \o SubSeq(s, index + 1, Len(s))
+    ELSE s (* If element not found, return original sequence *)
+    
+    
 
-(*--algorithm P2PNetwork
-variables
-  messages = << >>,
-  routes = {},
-  alerts = {};
 
-begin
-  SendAlert:
-    either \E meter \in Nodes:
-      meter.type = "meter" /\ meter.state = "anomaly" ->
-        messages' := Append(messages, [src |-> meter.id, dest |-> AuthorityNode, type |-> "alert"]),
-        routes' := routes,
-        alerts' := alerts;
+(* Action *)
+SendAlert(payload) == 
+  LET newMsg == [src |-> ControllerNode, dest |-> AuthorityNode, type |-> "alert", data |-> payload]
+  IN
+    /\ ~(\E i \in 1..Len(messages): messages[i] = newMsg)
+    /\ messages' = Append(messages, newMsg)
+    /\ UNCHANGED alerts
 
-  RouteMessage:
-    either \E msg \in messages:
-      \E n \in Nodes:
-        RoutingTable(n, msg.dest) = NextHop ->
-          messages' := (messages \ {msg}) \cup {msg \ {src |-> NextHop}},
-          routes' := routes \cup {[msg |-> NextHop]},
-          alerts' := alerts;
+Deliver ==
+  \E i \in 1..Len(messages):
+    /\ messages[i].dest = AuthorityNode
+    /\ alerts' = alerts \cup {messages[i]}
+    /\ messages' = RemoveElement(messages, messages[i])
 
-  Deliver:
-    either \E msg \in messages:
-      msg.dest = LocalNode ->
-        alerts' := alerts \cup {msg},
-        messages' := messages \ {msg},
-        routes' := routes;
-
-end algorithm; *)
 
 Init == 
   /\ messages = << >>
-  /\ routes = {}
   /\ alerts = {}
+  
+Next == \E payload \in Payloads: \/ SendAlert(payload)
+                                 \/ Deliver
 
-SendAlert ==
-  \E meter \in Nodes:
-    meter.type = "meter" /\ meter.state = "anomaly" /\
-    messages' = Append(messages, [src |-> meter.id, dest |-> AuthorityNode, type |-> "alert", timestamp |-> currentTime]) /\
-    routes' = routes /\
-    alerts' = alerts /\
-    currentTime' = currentTime + 1
+vars == <<messages, alerts>>
+Spec == Init /\ [][Next]_vars
 
-RouteMessage ==
-  \E msg \in messages:
-    \E n \in Nodes:
-      RoutingTable(n, msg.dest) = NextHop /\
-      messages' = (messages \ {msg}) \cup {msg \ {src |-> NextHop}} /\
-      routes' = routes \cup {[msg |-> NextHop]} /\
-      alerts' = alerts
-
-Deliver ==
-  \E msg \in messages:
-    msg.dest = LocalNode /\
-    alerts' = alerts \cup {msg} /\
-    messages' = messages \ {msg} /\
-    routes' = routes
-
-Next == SendAlert \/ RouteMessage \/ Deliver
-
-Spec == Init \/ [][Next]_<<messages, routes, alerts>>
-
-(* Properties *)
-TypeOK == 
-  messages \in Seq([src: Nodes, dest: Nodes, type: String]) /\
-  routes \in [messages -> Nodes] /\
-  alerts \in SetOf([src: Nodes, dest: Nodes, type: String])
-
-MessageDeliveryInvariant ==
-  \A msg \in DOMAIN routes:
-    \E n \in Nodes:
-      n = msg.src /\ msg.dest = AuthorityNode
-
+(* Invariants *)
 NoDuplicateMessages ==
-  \A msg1, msg2 \in messages:
-    msg1 /= msg2 => msg1.src /= msg2.src \/ msg1.dest /= msg2.dest
+  \A i, j \in 1..Len(messages):
+    i # j => messages[i] # messages[j]
+
+TypeOK == 
+  /\ messages \in Seq([src: Nodes, dest: Nodes, type: MessageType, data: Payloads]) 
+  /\ alerts \subseteq [src: Nodes, dest: Nodes, type: MessageType, data: Payloads]
+
+INVARIANTS == NoDuplicateMessages /\ TypeOK
 
 =============================================================================
+(* RouteMessage ==
+  \E msg \in messages:
+    \E n \in Nodes:
+      /\ RoutingTable(n, msg.dest) = NextHop 
+      /\ messages' = (messages \ {msg}) \cup {msg \ {src |-> NextHop}}
+      /\ routes' = routes \cup {[msg |-> NextHop]}
+      /\ alerts' = alerts *)
+
+(* MessageDeliveryInvariant ==
+  \A msg \in DOMAIN routes:
+    \E n \in Nodes:
+      n = msg.src /\ msg.dest = AuthorityNode *)
+(* For TLC to explore, Next needs to allow SendAlert with some payload or Deliver *)
+(* This will be refined when integrating with AnomalyAlertModel *)

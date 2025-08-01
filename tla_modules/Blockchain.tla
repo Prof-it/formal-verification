@@ -47,7 +47,8 @@ ContractStateInvariant ==
             => \E i \in 1..Len(ledger):
                 ledger[i].customerId = c /\ ledger[i].type = "anomaly"
 
-
+INVARIANTS ==
+  TypeOK /\ LedgerImmutability /\ ContractStateInvariant
 =============================================================================
 (* Renamed to avoid clash, parameterized *)
     (* Action is only enabled if eventTypeStr is "anomaly" and leads to a state change. *)

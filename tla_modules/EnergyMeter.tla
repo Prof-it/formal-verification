@@ -45,6 +45,7 @@ AnomalyAlwaysReported == \A s \in Sensors:
                            => []\E i \in 1..Len(events): 
                                    events[i] = "anomaly_detected:" \o ToString(s)
 
+INVARIANTS == TypeOK /\ AnomalyAlwaysReportedInv
 
 
 =============================================================================

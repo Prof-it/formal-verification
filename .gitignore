@@ -7,7 +7,7 @@
 # Build and temporary files
 *.aux
 *.log
-*.pdf
+# *.pdf
 *.out
 
 # IDE and editor files

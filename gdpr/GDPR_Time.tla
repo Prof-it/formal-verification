@@ -6,34 +6,24 @@ CONSTANTS
     Data,
     InitialEvents
     
-AllTimes ==
-    { e.time : e \in InitialEvents }
-    \cup
-    { e.end_time : e \in InitialEvents }
+TimePoint == { e.time : e \in InitialEvents } \cup { e.end_time : e \in InitialEvents }
 
-\* A record for TimePoint, for readability and robustness.
-TimePoint == AllTimes \*[year: 2000..2001, month: 1..12, day: 1..31, hour: 0..23, minute: 0..59]
+EventRecordTypes == {"StartProcessing", "GiveConsent", "WithdrawConsent", 
+                             "StartContract", "EndContract"}
 
-EventRecordTypes == {"StartProcessing", "GiveConsent", "WithdrawConsent", "StartContract", "EndContract"}
+Event == [type: EventRecordTypes, time: TimePoint, subject: DataSubjects, 
+                                  data: Data, end_time: TimePoint]
 
-Event == [type: EventRecordTypes, time: TimePoint, subject: DataSubjects, data: Data, end_time: TimePoint]
+LegalBasis == [ type: {"Consent", "Contract"},
+                subject: DataSubjects,
+                data: Data,
+                start: TimePoint,
+                end: TimePoint ]
 
-LegalBasis ==
-    [
-        type: {"Consent", "Contract"},
-        subject: DataSubjects,
-        data: Data,
-        start: TimePoint,
-        end: TimePoint
-    ]
-
-Process ==
-    [
-        subject: DataSubjects,
-        data: Data,
-        start: TimePoint,
-        end: TimePoint
-    ]
+Process ==[ subject: DataSubjects,
+            data: Data,
+            start: TimePoint,
+            end: TimePoint ]
 
 
 
@@ -52,17 +42,17 @@ InitialTime == IF InitialEvents = {} THEN
                ELSE MinTime(InitialEvents)
 
 EndTime == IF InitialEvents = {} THEN
-                [year |-> FixedEpochYear + 50, month |-> 12, day |-> 31, hour |-> 23, minute |-> 59]
+                [year |-> FixedEpochYear + 50, month |-> 12, day |-> 31, 
+                                               hour |-> 23, minute |-> 59]
            ELSE MaxTime(InitialEvents)
 
 
 
-Init ==
-    /\ currentTime = InitialTime
-    /\ eventsToProcess = InitialEvents
-    /\ activeProcesses = {}
-    /\ activeLegalBases = {}
-    /\ breachesInProgress = {}
+Init == /\ currentTime = InitialTime
+        /\ eventsToProcess = InitialEvents
+        /\ activeProcesses = {}
+        /\ activeLegalBases = {}
+        /\ breachesInProgress = {}
 
 StartProcessing(e) ==
     /\ e.type = "StartProcessing"
@@ -87,7 +77,8 @@ GiveConsent(e) ==
 
 WithdrawConsent(e) ==
         /\ e.type = "WithdrawConsent"
-        /\ \E c \in activeLegalBases: c.type = "Consent" /\ c.subject = e.subject /\ c.data = e.data
+        /\ \E c \in activeLegalBases: 
+            c.type = "Consent" /\ c.subject = e.subject /\ c.data = e.data
         /\ LET consentToRemove == CHOOSE c \in activeLegalBases:
                               c.type = "Consent" /\ c.subject = e.subject /\ c.data = e.data
            IN
@@ -115,7 +106,8 @@ StartContract(e) ==
 
 EndContract(e) ==
     /\ e.type = "EndContract"
-    /\ \E c \in activeLegalBases: c.type = "Contract" /\ c.subject = e.subject /\ c.data = e.data
+    /\ \E c \in activeLegalBases: 
+       c.type = "Contract" /\ c.subject = e.subject /\ c.data = e.data
     /\ LET contractToEnd == CHOOSE c \in activeLegalBases:
                                c.type = "Contract" /\ c.subject = e.subject /\ c.data = e.data
        IN

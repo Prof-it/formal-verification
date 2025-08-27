@@ -6,7 +6,6 @@ MC_DataSubjects == {"erni", "lisa", "bert"}
 MC_Data == {"healthdata", "emaildata", "salarydata", "traveldata"}
 MC_MAX_TIME == [year |-> 2500, month |-> 12, day |-> 31, hour |-> 23, minute |-> 59]
 
-
 \* The set of initial events that the system will process.
 \* All legal bases are now created by events.
 MC_InitialEvents ==
@@ -58,5 +57,5 @@ MC_Init ==
 
 =============================================================================
 \* Modification History
-\* Last modified Wed Aug 27 23:42:57 CEST 2025 by tianxiang.lu
+\* Last modified Thu Aug 28 01:54:54 CEST 2025 by tianxiang.lu
 \* Created Mon Aug 11 01:12:30 CEST 2025 by tianxiang.lu

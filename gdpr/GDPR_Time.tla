@@ -26,9 +26,6 @@ Process ==[ subject: DataSubjects,
             end: TimePoint ]
 
 
-
-
-
 VARIABLES
     currentTime,
     eventsToProcess,
@@ -127,9 +124,6 @@ IsLawful(p) ==
         /\ p.subject = l.subject
         /\ p.data = l.data
         /\ TimeBetween(l.start, l.end, currentTime)
-        \*/\ TimeBetween(p.start, p.end, currentTime)
-        \*/\ Before(p.start, l.start) \/ After(p.end, l.end)
-        \*/\ TimeBetween(p.start, p.end, currentTime)
         
 
 BreachOccurs ==

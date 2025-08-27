@@ -45,6 +45,9 @@ DaysUpToMonth(tp) ==
            THEN 29
            ELSE DaysInMonth[tp.month - 1]
 
+
+
+
 LeapDaysSinceEpoch(y) ==
     LET d == y - FixedEpochYear
     IN  (d \div 4) - (d \div 100) + (d \div 400)
@@ -65,14 +68,16 @@ Before(t1, t2) == LinearTime(t1) < LinearTime(t2)
 After(t1, t2) == LinearTime(t1) > LinearTime(t2)
 TimeBetween(t_start, t_end, t_test) == /\ Before(t_start, t_test) /\ Before(t_test, t_end)
 
+\* Help function for calculation if a time point occur within 72 hours.
 Within72Hours(start_time, end_time) == (LinearTime(end_time) - LinearTime(start_time)) <= 72 * 60
 
-
+\* The earliest time point within a set of events
 MinTime(events) ==
   LET times == {e.time : e \in events}
   IN
     CHOOSE t \in times: \A t_other \in times: LinearTime(t) <= LinearTime(t_other)
 
+\* The latest time point within a set of events
 MaxTime(events) ==
   LET times == {e.time : e \in events}
   IN

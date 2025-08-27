@@ -36,9 +36,7 @@ The model implements and formally verifies the following core GDPR principles:
 
 - **Legal Basis Requirement (R1)**: Verifies that all active data processing has a valid legal basis.
 - **Legal Basis Types (R2)**: Models different legal basis types (Consent, Contract, etc.).
-- **Consent Timing (R3)**: Ensures consent is valid for the entire duration of processing.
-- **Contract Timing (R4)**: Verifies that contract-based processing only occurs within the contract's terms.
-- **Breach Reporting Deadline (R5)**: Guarantees that data breaches are reported within 72 hours of discovery.
+- **Breach Reporting Deadline (R3)**: Guarantees that data breaches are reported within 72 hours of discovery.
 
 ***
 

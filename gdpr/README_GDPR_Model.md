@@ -69,3 +69,18 @@ To verify the model:
 1.  **Open the specification** in the TLA+ Toolbox.
 2.  **Define the concrete test scenario** in the `MC_GDPR_Time` module, where you provide specific values for **`DataSubjects`**, **`Data`**, and **`InitialEvents`**.
 3.  **Run TLC** on the model to check all invariants. TLC will explore all possible sequences of events and state changes to prove that the GDPR rules are upheld in every reachable state.
+
+
+## Compatibility with Data Privacy Vocabulary (DPV)  
+Based on the W3C Community Standard: [w3c.github.io/dpv](https://w3c.github.io/dpv/)  
+
+We use the **DPV Ontology** with [Protégé](https://protege.stanford.edu/):  
+- **dpv-owl.rdf** — initial ontology for our model  
+- **eu-gdpr-owl.rdf** — extended ontology for EU GDPR  
+- **dpv-owl-turtle** — Turtle export of our model from Protégé  
+
+*Files downloaded August 2025; check [DPV](https://w3c.github.io/dpv/) for updates.*  
+
+### Visualization & Reasoning with Ontology
+- Explore entities and relationships with Protégé’s **OntoGraf**  
+- Use Protégé plugins for description logic reasoning, validation, and SPARQL queries  

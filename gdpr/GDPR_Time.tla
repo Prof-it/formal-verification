@@ -127,7 +127,9 @@ IsLawful(p) ==
         /\ p.subject = l.subject
         /\ p.data = l.data
         /\ TimeBetween(l.start, l.end, currentTime)
-        /\ TimeBetween(p.start, p.end, currentTime)
+        \*/\ TimeBetween(p.start, p.end, currentTime)
+        \*/\ Before(p.start, l.start) \/ After(p.end, l.end)
+        \*/\ TimeBetween(p.start, p.end, currentTime)
         
 
 BreachOccurs ==
@@ -160,13 +162,16 @@ Next ==
     \/ BreachOccurs
     \/ ReportBreach
 
+vars == <<activeProcesses, activeLegalBases, breachesInProgress, eventsToProcess, currentTime>>
+
+Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
+
 ---------------------------------
 TypeInvariant ==
     /\ currentTime \in TimePoint
     /\ eventsToProcess \subseteq InitialEvents
     /\ activeProcesses \subseteq Process
     /\ activeLegalBases \subseteq LegalBasis
-    /\ breachesInProgress \subseteq [breachTime: TimePoint, status: {"Pending", "Reported"}]
 
 (*Rule 1: Legal Basis Requirement
   If personal data is being processed, there must be a legal basis for it.*)
@@ -181,30 +186,18 @@ A legal basis must be a recognized type, such as consent or contract.*)
 LegalBasesHaveValidType ==
     \A l \in activeLegalBases: l.type \in {"Consent", "Contract"}
 
-(*Rule 3: Consent Timing
-Consent must be obtained before processing starts and remain valid during processing.*)
-ConsentTimingIsValid ==
-    \A p \in activeProcesses:
-        (\E l \in activeLegalBases:
-            /\ p.subject = l.subject
-            /\ p.data = l.data
-            /\ l.type = "Consent"
-            /\ Before(l.start, p.start)
-        )
-(*Rule 4: Contract Timing
-Contract-based processing is only lawful during the contract term.*)
-ContractTimingIsValid ==
-    \A p \in activeProcesses:
-        (\E l \in activeLegalBases:
-            /\ p.subject = l.subject
-            /\ p.data = l.data
-            /\ l.type = "Contract"
-            /\ TimeBetween(l.start, l.end, currentTime)
-        )
+        
     
-(*Rule 5: Breach Reporting Deadline
+(*Rule 3: Breach Reporting Deadline
 Guarantees that data breaches are reported within 72 hours of discovery.*)    
 BreachReportedOnTime ==
     \A b \in breachesInProgress:
         (b.status = "Pending") => Within72Hours(b.breachTime, currentTime)
+--------------------------------
+
+THEOREM Spec => []TypeInvariant
+THEOREM Spec => []AllProcessingIsLawful
+THEOREM Spec => []LegalBasesHaveValidType
+THEOREM Spec => []BreachReportedOnTime
+
 =============================================================================

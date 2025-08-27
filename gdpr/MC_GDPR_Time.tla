@@ -55,10 +55,8 @@ MC_Init ==
     /\ breachesInProgress = {}
 
 
-vars == <<activeProcesses, activeLegalBases, breachesInProgress, eventsToProcess, currentTime>>
 
-Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 =============================================================================
 \* Modification History
-\* Last modified Mon Aug 11 06:57:47 CEST 2025 by tianxiang.lu
+\* Last modified Wed Aug 27 23:42:57 CEST 2025 by tianxiang.lu
 \* Created Mon Aug 11 01:12:30 CEST 2025 by tianxiang.lu

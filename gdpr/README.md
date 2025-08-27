@@ -67,7 +67,7 @@ To verify the model:
 1.  **Open the specification** in the TLA+ Toolbox.
 2.  **Define the concrete test scenario** in the `MC_GDPR_Time` module, where you provide specific values for **`DataSubjects`**, **`Data`**, and **`InitialEvents`**. For easy start up, we already provided a scenario with the specific values in **`MC_xxx`** definitions, you only need to assign the **`MC_xxx`** as the model values for the constants correspondingly. 
 
-## 3. Run TLC Model Checker  
+3. Run TLC Model Checker  
 
 Use **TLC** to verify invariants in the TLA+ model.  
 

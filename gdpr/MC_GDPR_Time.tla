@@ -1,5 +1,5 @@
 ---------------------------- MODULE MC_GDPR_Time ----------------------------
-EXTENDS GDPR_Time, TLC
+EXTENDS GDPR_Rules, TLC
 
 \* Define finite sets for data subjects and data types.
 MC_DataSubjects == {"erni", "lisa", "bert"}
@@ -57,5 +57,5 @@ MC_Init ==
 
 =============================================================================
 \* Modification History
-\* Last modified Thu Aug 28 01:54:54 CEST 2025 by tianxiang.lu
+\* Last modified Mon Sep 08 22:07:40 CEST 2025 by tianxiang.lu
 \* Created Mon Aug 11 01:12:30 CEST 2025 by tianxiang.lu

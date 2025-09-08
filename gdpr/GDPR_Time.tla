@@ -160,38 +160,4 @@ vars == <<activeProcesses, activeLegalBases, breachesInProgress, eventsToProcess
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
----------------------------------
-TypeInvariant ==
-    /\ currentTime \in TimePoint
-    /\ eventsToProcess \subseteq InitialEvents
-    /\ activeProcesses \subseteq Process
-    /\ activeLegalBases \subseteq LegalBasis
-
-(*Rule 1: Legal Basis Requirement
-  If personal data is being processed, there must be a legal basis for it.*)
-AllProcessingIsLawful ==
-    \A p \in activeProcesses:
-        \E l \in activeLegalBases:
-            /\ p.subject = l.subject
-            /\ p.data = l.data
-            /\ TimeBetween(l.start, l.end, currentTime)
-(*Rule 2: Legal Basis Types
-A legal basis must be a recognized type, such as consent or contract.*)
-LegalBasesHaveValidType ==
-    \A l \in activeLegalBases: l.type \in {"Consent", "Contract"}
-
-        
-    
-(*Rule 3: Breach Reporting Deadline
-Guarantees that data breaches are reported within 72 hours of discovery.*)    
-BreachReportedOnTime ==
-    \A b \in breachesInProgress:
-        (b.status = "Pending") => Within72Hours(b.breachTime, currentTime)
---------------------------------
-
-THEOREM Spec => []TypeInvariant
-THEOREM Spec => []AllProcessingIsLawful
-THEOREM Spec => []LegalBasesHaveValidType
-THEOREM Spec => []BreachReportedOnTime
-
 =============================================================================

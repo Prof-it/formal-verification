@@ -119,7 +119,7 @@ EndContract(e) ==
                                         end     |-> e.time ]}
         /\ UNCHANGED <<activeProcesses, breachesInProgress>>
         
-IsLawful(p) ==
+HasLegalBasis(p) ==
     \E l \in activeLegalBases:
         /\ p.subject = l.subject
         /\ p.data = l.data
@@ -128,7 +128,7 @@ IsLawful(p) ==
 
 BreachOccurs ==
         \E p \in activeProcesses: 
-            /\ ~IsLawful(p) 
+            /\ ~HasLegalBasis(p) 
             /\ [process |-> p, status |-> "Pending"] \notin breachesInProgress
             /\ breachesInProgress' = breachesInProgress 
                                    \cup {[ process |-> p,

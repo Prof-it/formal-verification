@@ -24,8 +24,6 @@ FixAnomaly ==  \E i \in 1..Len(events), s \in Sensors:
 (* Specification *)
 Next == SensorReportAnomaly \/ FixAnomaly
 
-
-
 Spec == /\ Init 
         /\ [][Next]_<<sensorStates, events>>
         /\ WF_<<sensorStates, events>>(SensorReportAnomaly)

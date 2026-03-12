@@ -2,11 +2,6 @@
 EXTENDS GDPR_Time
 
 ---------------------------------
-TypeInvariant ==
-    /\ currentTime \in TimePoint
-    /\ eventsToProcess \subseteq InitialEvents
-    /\ activeProcesses \subseteq Process
-    /\ activeLegalBases \subseteq LegalBasis
 
 (*Rule 1: Legal Basis Requirement
   If personal data is being processed, there must be a legal basis for it.*)
@@ -19,7 +14,7 @@ AllProcessingIsLawful ==
 (*Rule 2: Legal Basis Types
 A legal basis must be a recognized type, such as consent or contract.*)
 LegalBasesHaveValidType ==
-    \A l \in activeLegalBases: l.type \in {"Consent", "Contract"}
+    \A l \in activeLegalBases: l.type \in LegalBasis.type
 
         
     
@@ -37,5 +32,5 @@ THEOREM Spec => []BreachReportedOnTime
 
 =============================================================================
 \* Modification History
-\* Last modified Mon Sep 08 22:08:28 CEST 2025 by tianxiang.lu
+\* Last modified Wed Sep 10 16:19:08 CEST 2025 by tianxiang.lu
 \* Created Mon Sep 08 22:05:22 CEST 2025 by tianxiang.lu

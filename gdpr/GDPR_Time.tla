@@ -160,4 +160,12 @@ vars == <<activeProcesses, activeLegalBases, breachesInProgress, eventsToProcess
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 
+---------------------------------
+TypeInvariant ==
+    /\ currentTime \in TimePoint
+    /\ eventsToProcess \subseteq InitialEvents
+    /\ activeProcesses \subseteq Process
+    /\ activeLegalBases \subseteq LegalBasis
+
+
 =============================================================================

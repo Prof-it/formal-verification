@@ -7,9 +7,9 @@ CONSTANT N
 Symbolic BB84 quantum states using Dirac notation
 *)
 
-QStates == {"|0⟩","|1⟩","|+⟩","|−⟩"}
-ZStates == {"|0⟩","|1⟩"}
-XStates == {"|+⟩","|−⟩"}
+QStates == {"|0>","|1>","|+>","|->"}
+ZStates == {"|0>","|1>"}
+XStates == {"|+>","|->"}
 
 Bases == {"Z","X"}
 Bits  == {0,1}
@@ -18,7 +18,7 @@ Basis(s) ==
     IF s \in ZStates THEN "Z" ELSE "X"
 
 BitValue(s) ==
-    IF s \in {"|0⟩","|+⟩"} THEN 0 ELSE 1
+    IF s \in {"|0>","|+>"} THEN 0 ELSE 1
 
 StatesOfBasis(b) ==
     IF b = "Z" THEN ZStates ELSE XStates

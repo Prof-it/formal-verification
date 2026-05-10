@@ -1,10 +1,6 @@
 ----------------------------- MODULE BB84Simple -----------------------------
 EXTENDS Naturals
 
-(*
-Symbolic BB84 quantum states using Dirac notation
-*)
-
 QStates == {"|0>","|1>","|+>","|->"}
 ZStates == {"|0>","|1>"}
 XStates == {"|+>","|->"}
@@ -22,10 +18,6 @@ Init == /\ aliceState \in QStates
         /\ channelState = aliceState
         /\ bobBasis \in Bases
         /\ bobResult \in Bits
-        
-(*Transmit models the quantum channel.
-The qubit may remain unchanged (correct transmission)
-or change nondeterministically (noise or eavesdropping).*)
 
 Transmit == /\ \E b \in Bases : channelState' \in StatesOfBasis(b)
             /\ UNCHANGED <<aliceState, bobBasis, bobResult>>
@@ -38,22 +30,6 @@ Measure ==/\ IF Basis(channelState) = bobBasis
 Next == Transmit \/ Measure
 
 Spec == Init /\ [][Next]_vars
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Sifted == Basis(aliceState) = bobBasis

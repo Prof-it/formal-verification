@@ -1,0 +1,6 @@
+Scenario,Configuration,Timestamp,Status,TotalStates,DistinctStates,Depth,Run1(ms),Run2(ms),Run3(ms),MeanWallTime(ms),StdDev(ms),CI95HalfWidth(ms),ViolationsFound,Notes
+Scenario1_Strict,MainCheck_Strict.cfg,2026-05-10_22-23-27,COMPLETE,16,16,2,723,757,717,732.33,21.57,53.59,No,Executed successfully
+Scenario2_NoUniqueness,MainCheck_NoUniqueness.cfg,2026-05-10_22-23-27,COMPLETE,16,16,2,742,739,849,776.67,62.66,155.67,No,Executed successfully
+Scenario3_MediumScale,MainCheck_MediumScale.cfg,2026-05-10_22-23-27,COMPLETE,4225,4225,2,843,783,793,806.33,32.15,79.86,No,Executed successfully
+Scenario4_MinimalConstraints,MainCheck_MinimalConstraints.cfg,2026-05-10_22-23-27,COMPLETE,9,9,2,725,724,711,720.00,7.81,19.40,No,Executed successfully
+Scenario5_MillionScale,MainCheck_MillionScale.cfg,2026-05-10_22-23-27,COMPLETE,1002001,1002001,2,1851,1838,1831,1840.00,10.15,25.21,No,Executed successfully

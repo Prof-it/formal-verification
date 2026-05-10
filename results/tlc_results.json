@@ -1,0 +1,16 @@
+{
+  "title": "TLC Validation Results for Neural-Symbolic Verification",
+  "generated": "2026-05-10T22:20:15.618467",
+  "scenarios": [
+    {
+      "name": "Refinement_BreakdownWitness",
+      "config": "MainCheckRefinement_BreakdownWitness.cfg",
+      "status": "VIOLATIONS_FOUND",
+      "states": "",
+      "depth": "",
+      "time_milliseconds_mean": 271.33,
+      "time_milliseconds_ci95_half_width": 44.53,
+      "violations": "Yes"
+    }
+  ]
+}

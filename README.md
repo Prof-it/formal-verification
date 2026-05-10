@@ -137,6 +137,176 @@ Spec == Init \/ [][Next]_vars
 7. Test with small models first
 8. Use TLC statistics to optimize performance
 
+## Empirical TLC Validation (Reusable Workflow)
+
+This repository includes a reusable empirical TLC workflow that can be applied to any subproject with TLA+ modules and `.cfg` files.
+
+### What the workflow provides
+
+- Multi-scenario TLC execution from one command
+- Three repeated runs per scenario by default
+- Statistical timing report: mean, sample standard deviation, and 95% confidence interval
+- CSV, JSON, console summary, and LaTeX output for paper integration
+
+### Scripts (kept at repository root)
+
+- `run_tlc_validation.sh`: executes TLC scenarios and writes `results/tlc_results.csv`
+- `analyze_tlc_results.py`: reads results and prints publication-ready summary tables
+
+### Quick start (current project example)
+
+Run the default scenario suite:
+
+```bash
+cd /Users/tianxiang.lu/dev/formal-verification
+./run_tlc_validation.sh
+./analyze_tlc_results.py
+```
+
+Run with the high-scale stress test (`~1M` states):
+
+```bash
+RUN_MILLION_SCALE=1 ./run_tlc_validation.sh
+./analyze_tlc_results.py
+```
+
+### Reuse for other subprojects
+
+The runner is parameterized through environment variables, so it can be reused across subprojects without changing script code.
+
+```bash
+MODULE_DIR=/path/to/subproject/tla_modules \
+MODULE_NAME=YourMainModule \
+TLA_JAR_PATH=/path/to/tla2tools.jar \
+RESULTS_DIR=/path/to/output/results \
+SCENARIOS="S1:Config1.cfg;S2:Config2.cfg;S3:Config3.cfg" \
+RUNS_PER_SCENARIO=3 \
+./run_tlc_validation.sh
+
+RESULTS_DIR=/path/to/output/results ./analyze_tlc_results.py
+```
+
+### Scenario format
+
+Set `SCENARIOS` as a semicolon-separated list of `ScenarioName:ConfigFile` pairs:
+
+```bash
+SCENARIOS="Baseline:MainCheck_Strict.cfg;Relaxed:MainCheck_NoUniqueness.cfg"
+```
+
+### Interpreting empirical results
+
+- `TotalStates` and `DistinctStates` quantify explored state space
+- `MeanWallTime(ms)` is mean wall-clock runtime over repeated runs
+- `CI95HalfWidth(ms)` is the 95% confidence interval half-width for runtime
+- `ViolationsFound=Yes` indicates property/invariant violations were detected
+
+### Notes for paper reporting
+
+- Report `mean ± 95% CI` instead of single-run time to improve statistical rigor
+- Include the largest-state scenario as the scalability stress test
+- Keep per-scenario logs from `results/logs/` for reproducibility
+
+### Command reference
+
+Run everything:
+
+```bash
+./run_tlc_validation.sh && ./analyze_tlc_results.py
+```
+
+Run one or more specific scenarios:
+
+```bash
+SCENARIOS="StrictOnly:MainCheck_Strict.cfg" ./run_tlc_validation.sh
+```
+
+Run with the million-scale scenario (if `MainCheck_MillionScale.cfg` exists):
+
+```bash
+RUN_MILLION_SCALE=1 ./run_tlc_validation.sh
+```
+
+Run with the breakdown witness scenario (requires refinement witness module):
+
+```bash
+MODULE_NAME=MainCheckRefinementWitness RUN_BREAKDOWN_WITNESS=1 ./run_tlc_validation.sh
+```
+
+Inspect results:
+
+```bash
+cat results/tlc_results.csv | column -t -s,
+ls -lt results/logs/
+```
+
+Analyze a custom CSV location:
+
+```bash
+./analyze_tlc_results.py /path/to/results/tlc_results.csv
+```
+
+### Scenario catalog (current project)
+
+| Scenario | Config file | Intent |
+|---|---|---|
+| Strict | `MainCheck_Strict.cfg` | Baseline with full consistency checks |
+| No Uniqueness | `MainCheck_NoUniqueness.cfg` | Relax uniqueness assumption |
+| Medium Scale | `MainCheck_MediumScale.cfg` | Measure state-space/runtime growth |
+| Minimal Constraints | `MainCheck_MinimalConstraints.cfg` | Baseline type-focused validation |
+| Million Scale | `MainCheck_MillionScale.cfg` | Stress-test scalability (>1,000,000 states) |
+
+### Troubleshooting checklist
+
+- `java: command not found`: install Java and verify `java -version`.
+- `ClassNotFoundException: tlc2.TLC`: ensure `TLA_JAR_PATH` points to `tla2tools.jar`.
+- Unexpected failures in one scenario: inspect matching file in `results/logs/`.
+- Runtime too long: reduce config cardinalities or set lower `TLC_STOP_AFTER_SECONDS`.
+- No rows in analysis: ensure `results/tlc_results.csv` exists and has scenario data.
+
+### Paper integration guidance
+
+Use this concise structure in your manuscript:
+
+1. Empirical setup:
+   - TLC model checking over multiple scenarios.
+   - 3 repeated runs per scenario.
+   - Report mean runtime and 95% CI.
+2. Main findings:
+   - Whether constraints are sufficient/necessary.
+   - State-space size and scalability evidence.
+3. Reproducibility:
+   - Cite scripts, configs, CSV/JSON outputs, and logs in this repository.
+
+Suggested sentence template:
+
+```latex
+We evaluated the TLA+ specification with TLC across multiple scenarios using three repeated runs per scenario.
+Table~\ref{tab:tlc-results} reports mean runtime and 95\% confidence intervals together with explored state-space size.
+```
+
+### Alignment checklist for paper text and code
+
+Before submission, verify:
+
+- Use `deviceId` consistently (not `customerId`).
+- Document all `AnomalyEvent` fields:
+  - `eventId`, `deviceId`, `detectionTimestamp`, `eventType`, `eventData`, `reporter`.
+- Document `ProcessAnomaly(d, ts, et, ed, rep)` parameter meanings.
+- Keep invariant names aligned with the TLA+ files.
+- Ensure timing units are `ms` and reported as mean ± 95% CI.
+- Cite repository artifacts used for empirical validation.
+
+### Recommended supplementary artifacts
+
+Include these with paper submission when possible:
+
+- `results/tlc_results.csv`
+- `results/tlc_results.json`
+- `results/logs/*`
+- `tla_modules/MainCheck_*.cfg`
+- Core specs used in validation (`*.tla`)
+
 ## Key Properties Verified
 
 - Type safety across all modules

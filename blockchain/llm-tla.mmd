@@ -1,0 +1,18 @@
+flowchart TD
+    NL["/Natural Language Requirements/"] --> LLM_SPEC["/LLM-Assisted TLA+ Specification/"]
+    LLM_SPEC --> SANY["SANY Syntax Validation (tla2sany.SANY)"]
+    SANY --> |Errors| LLM_SPEC
+    SANY --> |Validated Specs| MERGE["Merge with LLM-Assisted Refinement Invariants"]
+    
+    NL --> LLM_INV["/LLM-Assisted Refinement Invariant Synthesis/"]
+    LLM_INV --> MERGE
+    
+    MERGE --> TLC["TLC Model Checking"]
+    TLC --> |Violations Found| REFINE["Refinement Modeling & Theorem Proving Loop"]
+    REFINE --> MERGE
+    
+    TLC --> |No Violations| DONE["Validated Model & Invariants"]
+    
+    classDef loop fill:#fff,stroke:#2a7fff,stroke-width:2px,color:#000;
+    classDef default fill:#fff,stroke:#2a7fff,stroke-width:2px,color:#000;
+    class LLM_SPEC,SANY,LLM_INV,MERGE,TLC,REFINE loop;

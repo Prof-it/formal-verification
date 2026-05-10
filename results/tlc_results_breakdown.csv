@@ -1,0 +1,2 @@
+Scenario,Configuration,Timestamp,Status,TotalStates,DistinctStates,Depth,Run1(ms),Run2(ms),Run3(ms),MeanWallTime(ms),StdDev(ms),CI95HalfWidth(ms),ViolationsFound,Notes
+Refinement_BreakdownWitness,MainCheckRefinement_BreakdownWitness.cfg,2026-05-10_22-24-15,VIOLATIONS_FOUND,11,11,3,781,762,738,760.33,21.55,53.53,Yes,Executed successfully

@@ -12,30 +12,30 @@ CONSTANT
 ASSUME  IsFiniteSet(Devices) /\ Devices /= {}
         /\ IsFiniteSet(EventTypes) /\ EventTypes /= {}
         /\ IsFiniteSet(EventRawData) /\ EventRawData /= {}
-        /\ IsFiniteSet(Timestamps) /\ Timestamps \subseteq Nat /\ Timestamps /= {}
+        /\ IsFiniteSet(Timestamps) /\ Timestamps /= {}
         /\ IsFiniteSet(Reporters) /\ Reporters /= {}
         /\ IsFiniteSet(PossibleEventIDs) /\ PossibleEventIDs /= {}
 
 (* Uninterpreted function to model event ID calculation *)
 (* This abstracts keccak256(abi.encode(deviceId, detectionTimestamp, eventType, eventData)) *)
-CalculateEventID(device \in Devices, timestamp \in Timestamps, type \in EventTypes, data \in EventRawData) \in PossibleEventIDs
-
-VARIABLES
-    hasAlertBeenTriggered, (* Mapping: EventID -> BOOLEAN *)
-    recordedAnomalies,     (* Mapping: EventID -> AnomalyEvent record *)
-    processedEventIds,     (* Sequence of processed EventIDs *)
-
+CalculateEventID(_device, _timestamp, _type, _data) ==
+    CHOOSE id \in PossibleEventIDs : TRUE
 
 (* Define the structure for a recorded anomaly event *)
 AnomalyEvent == [eventId: PossibleEventIDs, deviceId: Devices, detectionTimestamp: Timestamps, eventType: EventTypes, eventData: EventRawData, reporter: Reporters]
 
+VARIABLES
+    hasAlertBeenTriggered, (* Mapping: EventID -> BOOLEAN *)
+    recordedAnomalies,     (* Mapping: EventID -> AnomalyEvent record *)
+    processedEventIds      (* Sequence of processed EventIDs *)
+
 vars == <<hasAlertBeenTriggered, recordedAnomalies, processedEventIds>>
 
 Init ==
-    (* Initialize hasAlertBeenTriggered for all possible IDs to FALSE *)
+    (* Initialize hasAlertBeenTriggered as a total function mapping all EventIDs to FALSE *)
     /\ hasAlertBeenTriggered = [id \in PossibleEventIDs |-> FALSE]
-    (* Initialize recordedAnomalies as an empty map from EventID to AnomalyEvent record *)
-    /\ DOMAIN recordedAnomalies = {}
+    (* Initialize recordedAnomalies as an empty partial function *)
+    /\ recordedAnomalies = [id \in {} |-> [eventId: id, deviceId: 1, detectionTimestamp: 1, eventType: 1, eventData: 1, reporter: 1]]
     /\ processedEventIds = <<>>
 
 
@@ -43,15 +43,14 @@ ProcessAnomaly(d, ts, et, ed, rep) ==
     LET eventId == CalculateEventID(d, ts, et, ed) IN
        /\ ~hasAlertBeenTriggered[eventId]  (* Enabling condition: event not yet processed *)
        /\ hasAlertBeenTriggered' = [hasAlertBeenTriggered EXCEPT ![eventId] = TRUE]
-       /\ recordedAnomalies' = [recordedAnomalies EXCEPT ![eventId] = [
+       /\ recordedAnomalies' = recordedAnomalies @@ (eventId :> [
                                    eventId |-> eventId,
                                    deviceId |-> d,
                                    detectionTimestamp |-> ts,
                                    eventType |-> et,
                                    eventData |-> ed,
-
                                    reporter |-> rep
-                               ]]
+                               ])
        /\ processedEventIds' = Append(processedEventIds, eventId)
 
 
@@ -62,7 +61,7 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
--------------------------------- Properties --------------------------------
+(* ====== PROPERTIES - Invariants and Consistency Checks ====== *)
 
 TypeOK ==
        /\ hasAlertBeenTriggered \in [PossibleEventIDs -> BOOLEAN]

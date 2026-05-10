@@ -1,0 +1,4 @@
+Scenario,Configuration,Timestamp,Status,TotalStates,DistinctStates,Depth,Run1(ms),Run2(ms),Run3(ms),MeanWallTime(ms),StdDev(ms),CI95HalfWidth(ms),ViolationsFound,Notes
+Refinement_Strict,MainCheckRefinement_Strict.cfg,2026-05-10_22-23-57,COMPLETE,16,16,2,856,764,710,776.67,73.82,183.39,No,Executed successfully
+Refinement_NoUniqueness,MainCheckRefinement_NoUniqueness.cfg,2026-05-10_22-23-57,COMPLETE,16,16,2,727,763,723,737.67,22.03,54.73,No,Executed successfully
+Refinement_Minimal,MainCheckRefinement_Minimal.cfg,2026-05-10_22-23-57,COMPLETE,9,9,2,735,765,758,752.67,15.70,38.99,No,Executed successfully

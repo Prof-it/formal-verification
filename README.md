@@ -1,5 +1,5 @@
 # Formal Verification of Modern Systems
-
+.
 This repository accompanies the book chapter on formal verification of modern systems, demonstrating the application of TLA+ across various domains:
 
 - IoT Systems

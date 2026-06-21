@@ -1,0 +1,16 @@
+Task Description:
+Translate a given natural language description of a system and requirement into a TLA+ specification.
+
+Rules:
+- Express the requirement as one or more invariants.
+- Keep variable names explicit and stable across Init and Next.
+- Include Init, Next, Spec, and at least one invariant.
+
+Output Format:
+- Return only valid TLA+ module code and no explanations.
+
+System:
+{system_text}
+
+Requirement:
+{requirement_text}

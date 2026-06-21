@@ -1,0 +1,19 @@
+You previously generated a TLA+ specification that parsed but failed semantic/model checks.
+
+Task:
+- Repair semantic, typing, or transition logic issues while preserving requirement intent.
+
+Rules:
+- Keep module name exactly as: {module_name}
+- Keep variable set stable unless feedback requires a clear change.
+- Return only TLA+ code.
+- Only use a single prime (') for next-state variables. Never write variables with two or more primes, e.g., x'' is invalid in TLA+.
+- Every invariant referenced in the configuration file (such as DDMR26 and TypeOK) MUST be defined in your TLA+ specification using exactly the same name.
+- The DDMR26 invariant must represent the requirement in this task, and be named exactly DDMR26.
+- The TypeOK invariant must capture the type/range/domain of all variables, named exactly TypeOK.
+
+Previous Draft:
+{previous_spec}
+
+Model Checker Feedback:
+{tool_feedback}

@@ -1,0 +1,69 @@
+name: nasa_ddmr26
+module_name: CLA_Generated
+cfg_file: CLA_generation_eval.cfg
+system_text: |
+  The Capture Latch is an indeterminate mechanism in the NDSB1 tasked with providing the initial
+  connection (soft capture) between space vehicles during docking.
+
+  The Capture Latch maintains the connection during initial contact, vehicle alignment, and hard
+  capture. Once hard capture is completed, the capture latches are released and the NDS SCS is
+  stowed. Each NDS has three latches, one on each petal.
+
+  The secondary release requirements were derived for conditions where the capture latch experienced
+  failure in the primary drivetrain and had to be released quickly. The pre-capture force had to be
+  limited to reduce forward vehicle velocity needed to push the latches out of the way and complete
+  capture. The latch is designed for a short mission life of 214 days on-orbit with up to 4 dockings.
+
+  Main components of the capture latch mechanism:
+  1) Motor: nominal actuation, dual-wound brushless motor with redundant Hall-Effect position
+    sensors, each string driven by a separate controller.
+  2) Latch Pawl: reacts load from passive striker to attain capture, positioned to latch (Ready to
+    Capture) or release (Ready to Release) by the motor.
+  3) Transmission/Linkage System: transmits torque from motor to latch pawl and retains pawl position.
+  4) Secondary Release Mechanism: backup release path with a Non-Explosive Actuator (NEA) and
+    compressed spring driving latch into release mode.
+  5) Passive latch striker plate: simplified representation of stationary latch interface hardware on the
+    passive docking system.
+
+  The mechanism has three main modes: Ready to Capture (RTC), Ready to Release (RTR), and
+  secondary release. RTC allows capture/hold of the passive striker. RTR is nominal release via
+  motor drive. Secondary release enables release when drive system is inoperable (motor failure,
+  jamming, binding, seizing). NEA activation releases a spring-operated push rod. Once secondary
+  release is fired, the mechanism is unrecoverably in released mode and can no longer perform docking.
+
+  Full nominal capture/release sequence:
+  Step 1: Latch is set to ready-to-capture mode.
+  Step 2: During docking, incoming passive latch depresses latch pawl.
+  Step 3: Latch pawl passively snaps over striker plate.
+  Step 4: To release, motor and drivetrain reposition internal linkages to Ready-to-Release.
+  Step 5: Latch pawl is pushed/rotated out of the way by passive latch striker plate.
+  Step 6: Motor/drivetrain reconfigure internal linkages to Ready-to-Capture for next nominal docking.
+
+  Secondary release operation sequence:
+  Step 1: Latch is in ready-to-capture mode and has captured passive latch.
+  Step 2: After primary drive failure, secondary release is activated and NEA releases spring energy,
+       extending secondary release mechanism.
+  Step 3: Latch pawl is pushed/rotated out of the way by passive latch striker plate.
+  Step 4: Capture latch is permanently in secondary release mode.
+requirement_text: |
+  DDMR 26 Requirement:
+  A direct indication of the critical states of each mechanism shall be provided.
+
+  Rationale:
+  Knowledge of a mechanism's critical state, i.e., any state necessary for adequate operational use or
+  hazard control, is important for mission success. Direct measurement ensures reliable information.
+
+  Guidance:
+  Necessary state information varies with mechanism, concept of operations, and hazards from failure
+  to achieve or maintain intended state. Example state indications include mechanism condition,
+  mechanism position, reaching predetermined configurations, current draw, and electrical continuity.
+
+  Direct indication (vs indirect indication) means the mechanism function of interest is indicated
+  unambiguously rather than by a related proxy state. For example, measuring position of a component
+  in a latch drivetrain gives only indirect indication of latched state and may be erroneous under
+  drivetrain structural failure, backlash, or flexibility. Measuring latch pawl position gives direct
+  indication of a latched state. Proposed state-indication means should be evaluated as direct or indirect.
+
+  Positioning mechanisms should provide absolute positioning capability, either via absolute position
+  indication or ability to command to a specific known position, enabling periodic calibration or
+  anomaly recovery when commanded and true positions diverge.

@@ -1,0 +1,12 @@
+[
+  {
+    "key": "missing_next_state_assignment",
+    "pattern": "Error: Successor state is not completely specified.*not defined: (?P<vars>.*)",
+    "strategy": "Add or fix next-state assignments for all listed variables in every action."
+  },
+  {
+    "key": "invariant_violation",
+    "pattern": "Invariant (\\w+) is violated",
+    "strategy": "Analyze the counterexample trace to locate the violation, and repair the invariant or corresponding spec logic."
+  }
+]

@@ -1,0 +1,20 @@
+You previously generated a TLA+ specification that failed parsing.
+
+Task:
+- Repair only syntax and module-structure issues so the output parses.
+- Preserve intent and requirement semantics from the previous draft.
+
+Rules:
+- Keep module name exactly as: {module_name}
+- Return only TLA+ code.
+- Include Init, Next, Spec, and invariant declarations referenced by config.
+- Only use a single prime (') for next-state variables. Never write variables with two or more primes, e.g., x'' is invalid in TLA+.
+- Every invariant referenced in the configuration file (such as DDMR26 and TypeOK) MUST be defined in your TLA+ specification using exactly the same name.
+- The DDMR26 invariant must represent the requirement in this task, and be named exactly DDMR26.
+- The TypeOK invariant must capture the type/range/domain of all variables, named exactly TypeOK.
+
+Previous Draft:
+{previous_spec}
+
+Parser Feedback:
+{tool_feedback}

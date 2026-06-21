@@ -1,0 +1,44 @@
+Task Description:
+Translate the given natural language requirement into TLA+ syntax.
+
+Output Format:
+- Return only TLA+ formal specification code.
+
+Important:
+- Only use a single prime (') for next-state variables. Never write variables with two or more primes, e.g., x'' is invalid in TLA+.
+- Every invariant referenced in the configuration file (such as DDMR26 and TypeOK) MUST be defined in your TLA+ specification using exactly the same name.
+- The DDMR26 invariant must represent the requirement in this task, and be named exactly DDMR26.
+- The TypeOK invariant must capture the type/range/domain of all variables, named exactly TypeOK.
+
+Example Requirement:
+The system shall ensure that Node 0 initiates a probe when it possesses the token and either the token is black or Node 0 is black.
+Upon initiating the probe, the token shall be passed to Node N-1, painted white, and Node 0 shall be painted white while other node activity is unchanged.
+
+Example Output (abridged skeleton):
+------------------------------ MODULE EWD849 ------------------------------
+EXTENDS Naturals
+CONSTANT N
+VARIABLES tokenOwner, tokenColor, nodeColor
+Init == /\ tokenOwner = 0
+        /\ tokenColor \in {{"black", "white"}}
+        /\ nodeColor \in [0..N-1 -> {{"black", "white"}}]
+TypeOK == /\ tokenOwner \in 0..N-1
+          /\ tokenColor \in {{"black", "white"}}
+          /\ nodeColor \in [0..N-1 -> {{"black", "white"}}]
+DDMR26 == TRUE \* Replace with the required property about critical state indication
+ProbeStep == /\ tokenOwner = 0
+             /\ (tokenColor = "black" \/ nodeColor[0] = "black")
+             /\ tokenOwner' = N-1
+             /\ tokenColor' = "white"
+             /\ nodeColor' = [nodeColor EXCEPT ![0] = "white"]
+Next == ProbeStep
+Spec == Init /\ [][Next]_<<tokenOwner, tokenColor, nodeColor>>
+=============================================================================
+
+Now solve this task.
+
+System:
+{system_text}
+
+Requirement:
+{requirement_text}

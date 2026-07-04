@@ -264,39 +264,6 @@ Analyze a custom CSV location:
 - Runtime too long: reduce config cardinalities or set lower `TLC_STOP_AFTER_SECONDS`.
 - No rows in analysis: ensure `results/tlc_results.csv` exists and has scenario data.
 
-### Paper integration guidance
-
-Use this concise structure in your manuscript:
-
-1. Empirical setup:
-   - TLC model checking over multiple scenarios.
-   - 3 repeated runs per scenario.
-   - Report mean runtime and 95% CI.
-2. Main findings:
-   - Whether constraints are sufficient/necessary.
-   - State-space size and scalability evidence.
-3. Reproducibility:
-   - Cite scripts, configs, CSV/JSON outputs, and logs in this repository.
-
-Suggested sentence template:
-
-```latex
-We evaluated the TLA+ specification with TLC across multiple scenarios using three repeated runs per scenario.
-Table~\ref{tab:tlc-results} reports mean runtime and 95\% confidence intervals together with explored state-space size.
-```
-
-### Alignment checklist for paper text and code
-
-Before submission, verify:
-
-- Use `deviceId` consistently (not `customerId`).
-- Document all `AnomalyEvent` fields:
-  - `eventId`, `deviceId`, `detectionTimestamp`, `eventType`, `eventData`, `reporter`.
-- Document `ProcessAnomaly(d, ts, et, ed, rep)` parameter meanings.
-- Keep invariant names aligned with the TLA+ files.
-- Ensure timing units are `ms` and reported as mean ± 95% CI.
-- Cite repository artifacts used for empirical validation.
-
 ### Recommended supplementary artifacts
 
 Include these with paper submission when possible:

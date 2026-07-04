@@ -1,0 +1,15 @@
+flowchart LR
+
+    A[/"AnomalyAlertModel<br/>(Solidity)"/]:::input
+    B["TLA+ Implementation Spec"]:::step
+    C["MappedAbsState"]:::step
+    D["Abstract Blockchain Model"]:::output
+
+    A --> B
+    B -->|"State Mapping"| C
+    C -->|"Init & Step Refinement"| D
+    B -. "TLC StepCheck (internal)" .-> B
+
+    classDef input  fill:#EEEDFE,stroke:#534AB7,color:#3C3489
+    classDef step   fill:#E6F1FB,stroke:#185FA5,color:#0C447C
+    classDef output fill:#E1F5EE,stroke:#0F6E56,color:#085041

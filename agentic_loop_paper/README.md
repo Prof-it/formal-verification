@@ -1,6 +1,6 @@
 # Agentic Loop Paper Subproject
 
-This subfolder is isolated from the existing repository workflow and provides a compact platform for your paper experiments.
+This subproject is isolated from the main repository workflow and provides a compact platform for NL-to-TLA experiment runs used in the paper.
 
 ## Scope
 
@@ -28,14 +28,14 @@ pip install -r requirements.txt
 
 ## Run With Replay Provider (no API key)
 
-Create replay outputs first (each file is a full TLA+ module):
+Create replay outputs first (each file should contain one full TLA+ module):
 
 ```bash
 mkdir -p replay_outputs
 # Add 1..N .tla files to replay_outputs/
 ```
 
-Run baseline:
+Run baseline mode:
 
 ```bash
 PYTHONPATH=src python3 -m agentic_loop.cli \
@@ -50,7 +50,7 @@ PYTHONPATH=src python3 -m agentic_loop.cli \
   --replay-dir replay_outputs
 ```
 
-Run loop:
+Run loop mode:
 
 ```bash
 PYTHONPATH=src python3 -m agentic_loop.cli \
@@ -69,7 +69,7 @@ PYTHONPATH=src python3 -m agentic_loop.cli \
 ## Run With OpenAI-Compatible Provider
 
 ```bash
-export OPENAI_API_KEY=your_key
+export OPENAI_API_KEY=<api_key>
 PYTHONPATH=src python3 -m agentic_loop.cli \
   --task tasks/nasa_ddmr26_sample.yaml \
   --tla-jar /path/to/tla2tools.jar \
@@ -83,7 +83,7 @@ PYTHONPATH=src python3 -m agentic_loop.cli \
 
 ## Run Consolidated Baseline-vs-Loop Comparison
 
-This command runs both modes on the same task and automatically emits one consolidated table.
+This command runs both modes on the same task and writes a consolidated comparison report.
 
 ```bash
 PYTHONPATH=src python3 -m agentic_loop.compare_cli \
@@ -107,7 +107,7 @@ Generated artifacts:
 
 ## Output
 
-## CLA Baseline Assets
+### CLA Baseline Assets
 
 - `tla/CLA.tla`: reference CLA model used as the paper baseline artifact
 - `tla/CLA.cfg`: TLC config for the reference model
@@ -121,4 +121,4 @@ Each run writes:
 - `<task>_run.json`: full run metadata and attempt details
 - `<task>_attempts.csv`: tabular attempt-level summary
 
-This is enough to report baseline vs loop outcomes with minimal implementation overhead.
+These outputs are sufficient to report baseline-vs-loop outcomes with minimal analysis overhead.

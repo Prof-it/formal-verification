@@ -61,3 +61,4 @@ agentic_loop_paper/tla/*
 agentic_loop_paper/results/*
 .env
 agentic_loop_paper/states/*
+agentic_loop_paper/*.md

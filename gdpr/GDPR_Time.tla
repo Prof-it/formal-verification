@@ -33,13 +33,14 @@ VARIABLES
     activeLegalBases,
     breachesInProgress
 
+vars == <<activeProcesses, activeLegalBases, breachesInProgress, eventsToProcess, currentTime>>
 
 InitialTime == IF InitialEvents = {} THEN
-                  [year |-> FixedEpochYear, month |-> 1, day |-> 1, hour |-> 0, minute |-> 0]
-               ELSE MinTime(InitialEvents)
+                   [year |-> Min({FixedEpochYear} \cup YearRange), month |-> 1, day |-> 1, hour |-> 0, minute |-> 0]
+                ELSE MinTime(InitialEvents)
 
 EndTime == IF InitialEvents = {} THEN
-                [year |-> FixedEpochYear + 50, month |-> 12, day |-> 31, 
+                [year |-> Max({FixedEpochYear} \cup YearRange), month |-> 12, day |-> 31, 
                                                hour |-> 23, minute |-> 59]
            ELSE MaxTime(InitialEvents)
 
@@ -143,20 +144,47 @@ ReportBreach ==
         /\ b.status = "Pending"
         /\ breachesInProgress' = (breachesInProgress \ {b}) \cup {[b EXCEPT !.status = "Reported"]}
         /\ UNCHANGED <<currentTime, activeProcesses, activeLegalBases, eventsToProcess>>
+
+\* TerminateProcess action: removes processes whose end time has passed or legal basis is no longer valid
+TerminateProcess ==
+    \E p \in activeProcesses:
+        ( ~HasLegalBasis(p)
+          \/ LinearTime(currentTime) >= LinearTime(p.end)
+        )
+        /\ activeProcesses' = activeProcesses \ {p}
+        /\ UNCHANGED <<currentTime, activeLegalBases, breachesInProgress, eventsToProcess>>
+\* Advances currentTime to the next event's time if no other actions are enabled
+TimeAdvance ==
+    /\ eventsToProcess # {}
+    /\ LET t == MinTime(eventsToProcess)
+       IN /\ LinearTime(currentTime) < LinearTime(t)
+          /\ currentTime' = t
+    /\ UNCHANGED <<activeProcesses, activeLegalBases, breachesInProgress, eventsToProcess>>
+\* Removes events that are scheduled after the maximum allowed time
+RemoveUnreachableEvents ==
+    \E e \in eventsToProcess:
+        LinearTime(e.time) > LinearTime(FixedEndTime) /\
+        eventsToProcess' = eventsToProcess \ {e} /\
+        UNCHANGED <<currentTime, activeProcesses, activeLegalBases, breachesInProgress>>
+
 Next ==
     \* Event-driven actions
-    \/ \E e \in eventsToProcess:
-       /\ e.time = MinTime(eventsToProcess)
-       /\\/ GiveConsent(e)
-         \/ WithdrawConsent(e)
-         \/ StartProcessing(e)
-         \/ StartContract(e)
-         \/ EndContract(e)
+    \/ (\E e \in eventsToProcess:
+            /\ e.time = MinTime(eventsToProcess)
+            /\ (GiveConsent(e)
+                \/ WithdrawConsent(e)
+                \/ StartProcessing(e)
+                \/ StartContract(e)
+                \/ EndContract(e))
+        )
     \* State-driven actions
     \/ BreachOccurs
     \/ ReportBreach
+    \/ TerminateProcess
+    \/ RemoveUnreachableEvents
+    \/ TimeAdvance
+    \/ UNCHANGED vars
 
-vars == <<activeProcesses, activeLegalBases, breachesInProgress, eventsToProcess, currentTime>>
 
 Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 

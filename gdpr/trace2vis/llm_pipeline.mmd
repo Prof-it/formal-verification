@@ -1,0 +1,10 @@
+flowchart LR
+    A["TLA+ Model"] -->|TLC| B["Execution Trace"]
+    B --> C["LLM-based Trace Translation"]
+    C --> D["Mermaid Gantt"]
+    D --> E["Visualization"]
+
+    C -.->|Refine| C
+
+    style C fill:#f9f,stroke:#333,stroke-width:2px
+    style E fill:#ffb,stroke:#333,stroke-width:2px

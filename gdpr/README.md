@@ -20,7 +20,7 @@ Instead of static constants, all legal bases (Consent and Contract) are now intr
 The **`TimeUtils`** module has been refined to provide a more robust and accurate time representation, preventing the logical errors and potential infinite loops that can arise from simplified date arithmetic.
 
 - **Non-Recursive Time Calculation**: The time model uses a linear, non-recursive function to convert timestamps, which is crucial for TLC model checking to avoid stack overflows.
-- **Accurate Date Logic**: The model correctly accounts for varying month lengths and leap years when calculating time differences, ensuring that temporal rules like the 72-hour breach deadline are verified correctly.
+- **Accurate Date Logic**: The model correctly accounts for varying month lengths and leap years when calculating time differences, ensuring that temporal rules like the 72-hour incident deadline are verified correctly.
 
 ### 3. Integrated DPV Concepts
 The model's data structures are built around key concepts from the DPV (Data Privacy Vocabulary) ontology. This ensures the specification is semantically aligned with established data privacy standards.
@@ -36,7 +36,7 @@ The model implements and formally verifies the following core GDPR principles:
 
 - **Legal Basis Requirement (R1)**: Verifies that all active data processing has a valid legal basis.
 - **Legal Basis Types (R2)**: Models different legal basis types (Consent, Contract, etc.).
-- **Breach Reporting Deadline (R3)**: Guarantees that data breaches are reported within 72 hours of discovery.
+- **Incident Reporting Deadline (R3)**: Guarantees that data incidents are reported within 72 hours of discovery.
 
 ***
 
@@ -52,11 +52,11 @@ The model implements and formally verifies the following core GDPR principles:
 - **`eventsToProcess`**: A set of pending events waiting to be executed.
 - **`activeProcesses`**: The set of all currently running data processing activities.
 - **`activeLegalBases`**: The set of all currently active legal bases.
-- **`breachesInProgress`**: The set of recorded data breaches awaiting action.
+- **`incidentsInProgress`**: The set of recorded data incidents awaiting action.
 
 ### Actions
 - **Event Actions**: **`GiveConsent`**, **`WithdrawConsent`**, **`StartContract`**, **`EndContract`**, and **`StartProcessing`** are all triggered by events in `eventsToProcess`. These actions modify the system state in response to external events.
-- **State-Driven Actions**: **`BreachOccurs`** and **`ReportBreach`** are triggered when system conditions are met, such as when a legal basis expires or a processing activity becomes unlawful.
+- **State-Driven Actions**: **`ComplianceIncident`** and **`ReportIncident`** are triggered when system conditions are met, such as when a legal basis expires or a processing activity becomes unlawful.
 
 ***
 
@@ -72,7 +72,7 @@ To verify the model:
 Use **TLC** to verify invariants in the TLA+ model.  
 
 - The model defines `Spec` as the main specification.  
-- GDPR rules (`TypeInvariant`, `AllProcessingIsLawful`, `LegalBasesHaveValidType`, `BreachReportedOnTime`) are listed in **`MC_GDPR_Time.cfg`**, so TLC will automatically check them as invariants.  
+- GDPR rules (`TypeInvariant`, `AllProcessingIsLawful`, `LegalBasesHaveValidType`, `IncidentReportedOnTime`) are listed in **`MC_GDPR_Time.cfg`**, so TLC will automatically check them as invariants.  
 
 ### Download TLC  
 TLC is part of the [TLA+ Tools](https://github.com/tlaplus/tlaplus/releases).  
@@ -105,7 +105,7 @@ Checking invariants:
   TypeInvariant               OK
   AllProcessingIsLawful       OK
   LegalBasesHaveValidType     OK
-  BreachReportedOnTime        OK
+  IncidentReportedOnTime        OK
 
 Model checking completed. No error has been found.
 
@@ -124,3 +124,31 @@ We use the **DPV Ontology** with [Protégé](https://protege.stanford.edu/):
 ### Visualization & Reasoning with Ontology
 - Explore entities and relationships with Protégé’s **OntoGraf**  
 - Use Protégé plugins for description logic reasoning, validation, and SPARQL queries  
+# trace2vis Visualization Tool
+
+The `trace2vis` subfolder contains scripts to visualize TLC traces from GDPR TLA+ models as Mermaid Gantt charts. This helps in understanding event timelines, legal basis validity, and compliance periods.
+
+### Usage
+
+1. Install dependencies:
+   ```
+   pip install -r trace2vis/requirements.txt
+   ```
+2. Run the visualizer on a TLC `.out` file:
+   ```
+   cd trace2vis
+   python trace2mermaid.py ../MC_GDPR_Consentwithdrawn.out -o timeline.mmd
+   # or use trace2mermaid_llm.py for LLM-based diagrams
+   ```
+3. Open `timeline.mmd` in [Mermaid Live Editor](https://mermaid.live) to view the diagram.
+
+### Requirements
+
+See [`trace2vis/requirements.txt`](trace2vis/requirements.txt) for all dependencies.
+
+### Testing
+
+Run tests in the `trace2vis` folder with:
+```
+pytest
+```

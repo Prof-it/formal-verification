@@ -62,3 +62,8 @@ agentic_loop_paper/results/*
 .env
 agentic_loop_paper/states/*
 agentic_loop_paper/*.md
+states/*
+agentic_loop_paper/tests/__pycache__/*
+gdpr/*.md
+gdpr/*.tex
+gdpr/trace2vis/__pycache__/*

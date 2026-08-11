@@ -1,0 +1,24 @@
+```mermaid
+gantt
+    dateFormat  YYYY-MM-DD HH:mm
+    axisFormat  %Y-%m-%d %H:%M
+    title GDPR Scenario Visualization
+
+    section Milestones
+    [StartContract 2025-01-01 00_00] :milestone, id1, 2025-01-01 00:00, 0d
+    [GiveConsent 2025-07-12 08_20] :milestone, id2, 2025-01-02 00:00, 0d
+    [StartProcessing 2025-07-12 08_25] :milestone, id3, 2025-01-03 00:00, 0d
+    [WithdrawConsent 2025-07-23 10_35] :milestone, id4, 2025-01-04 00:00, 0d
+    [StartContract 2501-01-01 08_00] :milestone, id5, 2025-01-05 00:00, 0d
+
+    section Legal Bases
+    [Contract erni healthdata] :active, id6, 2025-01-01 00:00, 2025-01-05 00:00
+    [Consent erni emaildata] :active, id7, 2025-01-02 00:00, 2025-01-04 00:00
+
+    section Processing
+    [Processing erni emaildata] :done, id8, 2025-01-03 00:00, 2025-01-05 00:00
+
+    section Breach
+    [No Breach] :crit, id9, 2025-01-01 00:00, 2025-01-05 00:00
+```
+This Mermaid Gantt chart visualizes the GDPR scenario described in the TLC trace. The chart is divided into four sections: Milestones, Legal Bases, Processing, and Breach. Each event from the trace is represented as a bar or a milestone on the chart. The bars represent ongoing processes or legal bases, while the milestones represent specific events. The chart uses artificial dates to evenly distribute the events on the timeline, but the real timestamps are included in the labels for reference.

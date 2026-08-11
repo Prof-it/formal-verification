@@ -1,0 +1,20 @@
+gantt
+    dateFormat  YYYY-MM-DD HH:mm
+    axisFormat  %Y-%m-%d %H:%M
+
+    section Milestones
+    Event 1 2025-01-01 00_00 :milestone, id1, 2025-01-01 00:00, 0d
+    Event 2 2025-07-12 08_20 :milestone, id2, 2025-01-02 00:00, 0d
+    Event 3 2025-07-12 08_25 :milestone, id3, 2025-01-03 00:00, 0d
+    Event 4 2025-07-23 10_35 :milestone, id4, 2025-01-04 00:00, 0d
+    Event 5 2501-01-01 08_00 :milestone, id5, 2025-01-05 00:00, 0d
+
+    section Legal Bases
+    Contract erni healthdata :active, id6, 2025-01-01 00:00, 2025-01-05 00:00
+    Consent erni emaildata :active, id7, 2025-01-02 00:00, 2025-01-04 00:00
+
+    section Processing
+    Processing erni emaildata :done, id8, 2025-01-03 00:00, 2025-01-05 00:00
+
+    section Breach
+    No Breach :crit, id9, 2025-01-01 00:00, 2025-01-05 00:00

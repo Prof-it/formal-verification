@@ -19,9 +19,9 @@ LegalBasesHaveValidType ==
         
     
 (*Rule 3: Breach Reporting Deadline
-Guarantees that data breaches are reported within 72 hours of discovery.*)    
+Guarantees that data incidents are reported within 72 hours of discovery.*)    
 BreachReportedOnTime ==
-    \A b \in breachesInProgress:
+    \A b \in incidentsInProgress:
         (b.status = "Pending") => Within72Hours(b.breachTime, currentTime)
 --------------------------------
 

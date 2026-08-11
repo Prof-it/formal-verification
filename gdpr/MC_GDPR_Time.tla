@@ -51,7 +51,7 @@ MC_Init ==
     /\ eventsToProcess = InitialEvents
     /\ activeProcesses = {}
     /\ activeLegalBases = {}
-    /\ breachesInProgress = {}
+    /\ incidentsInProgress = {}
 
 
 

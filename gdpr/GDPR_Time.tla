@@ -171,7 +171,8 @@ RemoveUnreachableEvents ==
 Next ==
     \* Event-driven actions
     \/ (\E e \in eventsToProcess:
-            (GiveConsent(e)
+            /\ e.time = MinTime(eventsToProcess)
+            /\ (GiveConsent(e)
                 \/ WithdrawConsent(e)
                 \/ StartProcessing(e)
                 \/ StartContract(e)

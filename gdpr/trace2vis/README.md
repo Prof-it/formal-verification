@@ -2,6 +2,16 @@
 
 This tool parses TLC trace output from GDPR event-driven TLA+ models and creates a Mermaid Gantt diagram, showing events and period validity intervals over time, with readable, line-broken timestamps.
 
+## Timeline Alignment and Postprocessing
+
+**Equally spaced milestones:**
+All milestones in the Mermaid Gantt output are postprocessed to be equally distributed along the timeline axis, regardless of their real time intervals. The synthetic dates are auto-fit to a 7-day window for best readability.
+
+**Section bar alignment:**
+All non-milestone bars (Legal Bases, Processing, Breach) have their start and end times snapped to the synthetic milestone dates, but only if their original start/end exactly matches a milestone timestamp. This ensures all bars are visually aligned with the equally spaced milestones, preserving logical event order and improving readability.
+
+The real timestamps are preserved in the milestone labels for reference.
+
 ## Usage
 
 1. Activate your environment:

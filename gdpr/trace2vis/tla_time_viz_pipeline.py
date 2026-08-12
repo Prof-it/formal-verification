@@ -2,6 +2,7 @@ import subprocess
 import sys
 from pathlib import Path
 import os
+import glob
 
 def run_tlc_and_continue_on_violation(tla_path, cfg_path, out_file, tla2tools_jar):
     import subprocess
@@ -45,8 +46,8 @@ def run_pipeline_for_pair(tla_path, cfg_path, crop_amount=50):
 
     OUT = REPORT_DIR / f"{CFGBASE}.out"
     MMD = REPORT_DIR / f"{CFGBASE}.mmd"
-    RAWSVG = REPORT_DIR / f"{CFGBASE}.raw.svg"
-    CROP_SVG = REPORT_DIR / f"{CFGBASE}.cropped.svg"
+    # RAWSVG = REPORT_DIR / f"{CFGBASE}.raw.svg"
+    # CROP_SVG = REPORT_DIR / f"{CFGBASE}.cropped.svg"
     PNG = REPORT_DIR / f"{CFGBASE}.png"
     TLA2TOOLS_JAR = str((tla_path.parent / "../tla_modules/tla2tools.jar").resolve())
 
@@ -65,6 +66,7 @@ def run_pipeline_for_pair(tla_path, cfg_path, crop_amount=50):
         "-o", str(MMD)
     ])
 
+'''
     # 3. .mmd → SVG via mmdc
     print("Rendering raw SVG...")
     run([
@@ -92,9 +94,10 @@ def run_pipeline_for_pair(tla_path, cfg_path, crop_amount=50):
     ])
 
     print(f"Pipeline complete! Outputs:\n{OUT}\n{MMD}\n{RAWSVG}\n{CROP_SVG}\n{PNG}")
+'''
 
 def main():
-    import glob
+
     BASEDIR = Path(__file__).parent.parent.resolve()   # This resolves to gdpr/
     TLA_PATH = BASEDIR / "MC_GDPR_Time.tla"
     CFG_FILES = list(sorted(BASEDIR.glob("*.cfg")))

@@ -17,34 +17,101 @@ MC_MinuteRange == {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
 \* MC_TimePoints is not used; rely on TimePoints from TimeUtils.tla
 \* The set of initial events that the system will process.
 \* All legal bases are now created by events.
-MC_InitialEvents ==
+
+\* Dedicated initial event sets for each scenario
+MC_InitialEventConsentWithdrawn ==
     {
-        [type |-> "StartContract",
-         time |-> [year|->2025, month|->1, day|->1, hour|->0, minute|->0],
-         subject |-> "erni",
-         data |-> "healthdata",
-         end_time |-> FixedEndTime],
-        [type |-> "StartContract",
-         time |-> [year|->2501, month|->1, day|->1, hour|->8, minute|->0],
-         subject |-> "lisa",
-         data |-> "traveldata",
-         end_time |-> FixedEndTime],
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
          subject |-> "erni",
          data |-> "emaildata",
-         end_time |-> FixedEndTime],
+         end_time |-> MC_MAX_TIME],
+        [type |-> "WithdrawConsent",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
+         subject |-> "erni",
+         data |-> "emaildata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "StartProcessing",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->35],
+         subject |-> "erni",
+         data |-> "emaildata",
+         end_time |-> MC_MAX_TIME]
+    }
+
+MC_InitialEventValidConsent ==
+    {
+        [type |-> "GiveConsent",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
+         subject |-> "erni",
+         data |-> "emaildata",
+         end_time |-> MC_MAX_TIME],
         [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
          subject |-> "erni",
          data |-> "emaildata",
-         end_time |-> FixedEndTime],
-        [type |-> "WithdrawConsent",
-         time |-> [year|->2025, month|->7, day|->23, hour|->10, minute|->35],
+         end_time |-> MC_MAX_TIME]
+    }
+
+MC_InitialEventMissingConsent ==
+    {
+        [type |-> "StartProcessing",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
          subject |-> "erni",
          data |-> "emaildata",
-         end_time |-> FixedEndTime]
+         end_time |-> MC_MAX_TIME]
     }
+
+
+MC_InitialEventDeadlineViolation ==
+    {
+        [type |-> "GiveConsent",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
+         subject |-> "erni",
+         data |-> "emaildata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "StartProcessing",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
+         subject |-> "erni",
+         data |-> "emaildata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "DataBreachDetected",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
+         subject |-> "erni",
+         data |-> "emaildata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "GiveConsent",
+         time |-> [year|->2025, month|->7, day|->15, hour|->8, minute|->31],
+         subject |-> "erni",
+         data |-> "emaildata",
+         end_time |-> MC_MAX_TIME]
+    }
+
+\* New scenario: Correct report breach (no deadline violation)
+MC_InitialEventReportBreachNoViolation ==
+    {
+        [type |-> "GiveConsent",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
+         subject |-> "lisa",
+         data |-> "salarydata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "StartProcessing",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
+         subject |-> "lisa",
+         data |-> "salarydata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "DataBreachDetected",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
+         subject |-> "lisa",
+         data |-> "salarydata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "DataBreachReported",
+         time |-> [year|->2025, month|->7, day|->12, hour|->9, minute|->0],
+         subject |-> "lisa",
+         data |-> "salarydata",
+         end_time |-> MC_MAX_TIME]
+    }
+
+\* The original MC_InitialEvents is now deprecated and should not be used. Use MC_InitialEvent* constants instead.
     
 MC_Init ==
     /\ currentTime = MinTime(InitialEvents)

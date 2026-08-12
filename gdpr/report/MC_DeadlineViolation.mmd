@@ -1,20 +1,21 @@
 gantt
     dateFormat  YYYY-MM-DD HH:mm
-    axisFormat  %Y-%m-%d %H:%M
+axisFormat .
+    title GDPR Scenario Visualization
 
     section Milestones
-    [StartContract 2025-01-01 00_00] :milestone, id1, 2025-01-01 00:00, 0d
-    [GiveConsent 2025-07-12 08_20] :milestone, id2, 2025-01-02 00:00, 0d
-    [StartProcessing 2025-07-12 08_25] :milestone, id3, 2025-01-03 00:00, 0d
-    [WithdrawConsent 2025-07-23 10_35] :milestone, id4, 2025-01-04 00:00, 0d
-    [StartContract 2501-01-01 08_00] :milestone, id5, 2025-01-05 00:00, 0d
+        [Current Time, 2025-07-15 08_31] :milestone, ct, 2310-10-25 12:55, 0d
+    [GiveConsent, erni, emaildata, 2025-07-12 08_20] :milestone, id1, 2025-07-12 08:20, 0d
+    [StartProcessing, erni, emaildata, 2025-07-12 08_25] :milestone, id2, 2120-08-16 01:51, 0d
+    [DataBreachDetected, erni, emaildata, 2025-07-12 08_30] :milestone, id3, 2215-09-20 19:23, 0d
+    [GiveConsent, erni, emaildata, 2025-07-15 08_31] :milestone, id4, 2310-10-25 12:55, 0d
 
     section Legal Bases
-    [Contract erni healthdata] :active, id6, 2025-01-01 00:00, 2025-01-05 00:00
-    [Consent erni emaildata] :active, id7, 2025-01-02 00:00, 2025-01-04 00:00
+    [Consent , erni , emaildata] :active, id5, 2025-07-12 08:20, 2405-11-28 06:27
+    [Consent , erni , emaildata] :active, id6, 2310-10-25 12:55, 2405-11-28 06:27
 
     section Processing
-    [Processing erni emaildata] :done, id8, 2025-01-03 00:00, 2025-01-05 00:00
+    [Processing , erni , emaildata] :done, id7, 2120-08-16 01:51, 2405-11-28 06:27
 
-    section Breach
-    [Breach erni emaildata] :crit, id9, 2025-01-04 00:00, 2025-01-05 00:00
+    section DataBreach
+    [DataBreach , erni , emaildata] :crit, id8, 2215-09-20 19:23, 2405-11-28 06:27

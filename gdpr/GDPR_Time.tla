@@ -193,7 +193,7 @@ ReportDataBreach ==
 TerminateProcess ==
     \E p \in activeProcesses:
         ( ~HasLegalBasis(p)
-          \/ LinearTime(currentTime) >= LinearTime(p.end)
+          \/ ToMinutes(currentTime) >= ToMinutes(p.end)
         )
         /\ activeProcesses' = activeProcesses \ {p}
         /\ UNCHANGED <<currentTime, activeLegalBases, incidentsInProgress, dataBreachesInProgress, eventsToProcess>>
@@ -201,7 +201,7 @@ TerminateProcess ==
 \* Removes events that are scheduled after the maximum allowed time
 RemoveUnreachableEvents ==
     \E e \in eventsToProcess:
-        LinearTime(e.time) > LinearTime(FixedEndTime) /\
+        ToMinutes(e.time) > ToMinutes(FixedEndTime) /\
         eventsToProcess' = eventsToProcess \ {e} /\
         UNCHANGED <<currentTime, activeProcesses, activeLegalBases, incidentsInProgress, dataBreachesInProgress>>
 
@@ -209,7 +209,7 @@ RemoveUnreachableEvents ==
 TimeAdvance ==
     /\ eventsToProcess # {}
     /\ LET t == MinTime(eventsToProcess)
-       IN /\ LinearTime(currentTime) < LinearTime(t)
+       IN /\ ToMinutes(currentTime) < ToMinutes(t)
           /\ currentTime' = t
     /\ UNCHANGED <<activeProcesses, activeLegalBases, incidentsInProgress, dataBreachesInProgress, eventsToProcess>>
 

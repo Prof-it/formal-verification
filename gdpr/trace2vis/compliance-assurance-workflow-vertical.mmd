@@ -1,0 +1,8 @@
+flowchart TD
+    GEN["AI/Cloud System or CI/CD Test Scenario\n(Event Generation)"] --> FORM["Event-log Formalization\n(Map to TLA+ InitialEvents)"]
+    FORM --> MODEL["TLA+ Model"]
+    MODEL -->|TLC| TRACE["Formal Verification\n(TLC Execution Trace)"]
+    TRACE --> EVID["Evidence Generation\n(Gantt Visualization, Compliance Evidence)"]
+    EVID --> FEED["Engineering Feedback\n(Remediation, CI/CD Quality Gates)"]
+
+    EVID -.->|Refine| FORM

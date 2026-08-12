@@ -7,16 +7,16 @@ CONSTANTS
     InitialEvents
 
 
-\* Extend EventRecordTypes for DataBreachDetected
-EventRecordTypes == {"StartProcessing", "GiveConsent", "WithdrawConsent", 
-                              "StartContract", "EndContract", "DataBreachDetected", "DataBreachReported"}
+\* Extend EventTypes for DataBreachDetected
+EventTypes == {"StartProcessing", "GiveConsent", "WithdrawConsent", 
+                               "StartContract", "EndContract", "DataBreachDetected", "DataBreachReported"}
 
 
 
 TimePoint == { e.time : e \in InitialEvents } \cup { e.end_time : e \in InitialEvents }
 
-Event == [type: EventRecordTypes, time: TimePoint, subject: DataSubjects, 
-                                  data: Data, end_time: TimePoint]
+Event == [type: EventTypes, time: TimePoint, subject: DataSubjects, 
+                                   data: Data, end_time: TimePoint]
 
 LegalBasis == [ type: {"Consent", "Contract"},
                 subject: DataSubjects,
@@ -29,9 +29,9 @@ Process ==[ subject: DataSubjects,
             start: TimePoint,
             end: TimePoint ]
 
-\* DataBreachRecord: minimal, only type and time (DPV-aligned)
-DataBreachRecord == [event: Event, status: {"Pending", "Reported"}]
-IncidentRecord == [process: Process, status: {"Pending", "Recorded"}, incidentTime: TimePoint]
+\* DataBreach: minimal, only type and time (DPV-aligned)
+DataBreach == [event: Event, status: {"Pending", "Reported"}]
+Incident == [process: Process, status: {"Pending", "Recorded"}, incidentTime: TimePoint]
 
 VARIABLES
     currentTime,
@@ -243,8 +243,8 @@ TypeInvariant ==
     /\ eventsToProcess \subseteq InitialEvents
     /\ activeProcesses \subseteq Process
     /\ activeLegalBases \subseteq LegalBasis
-    /\ incidentsInProgress \subseteq IncidentRecord
-    /\ dataBreachesInProgress \subseteq DataBreachRecord
+    /\ incidentsInProgress \subseteq Incident
+    /\ dataBreachesInProgress \subseteq DataBreach
 
 
 =============================================================================

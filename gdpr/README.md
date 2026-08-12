@@ -45,7 +45,7 @@ The model implements and formally verifies the following core GDPR principles:
 ### Constants
 - **`DataSubjects`**: The set of persons.
 - **`Data`**: The set of data types being processed.
-- **`EventRecordTypes`**: The set of event types that can trigger state changes (e.g., `StartProcessing`, `GiveConsent`, `StartContract`).
+- **`EventTypes`**: The set of event types that can trigger state changes (e.g., `StartProcessing`, `GiveConsent`, `StartContract`).
 
 ### Variables
 - **`currentTime`**: The current system time, which advances with each event.

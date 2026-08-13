@@ -86,6 +86,31 @@ MC_InitialEventDeadlineViolation ==
          end_time |-> MC_MAX_TIME]
     }
 
+\* Scenario: Data breach is reported, but the report is late (deadline violation)
+MC_InitialEventReportBreachLate ==
+    {
+        [type |-> "GiveConsent",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
+         subject |-> "bert",
+         data |-> "healthdata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "StartProcessing",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
+         subject |-> "bert",
+         data |-> "healthdata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "DataBreachDetected",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
+         subject |-> "bert",
+         data |-> "healthdata",
+         end_time |-> MC_MAX_TIME],
+        [type |-> "DataBreachReported",
+         time |-> [year|->2025, month|->7, day|->13, hour|->10, minute|->0], \* Reported late (next day)
+         subject |-> "bert",
+         data |-> "healthdata",
+         end_time |-> MC_MAX_TIME]
+    }
+
 \* New scenario: Correct report breach (no deadline violation)
 MC_InitialEventReportBreachNoViolation ==
     {

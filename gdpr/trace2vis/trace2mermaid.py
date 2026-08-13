@@ -11,7 +11,7 @@ def parse_time_point(fields):
     return tuple(int(kv.get(f, 0)) for f in ["year","month","day","hour","minute"])
 def parse_tlc_set_block(lines, set_var_names):
     """
-    Robustly extracts only the two named TLC sets (eventsToProcess and activeLegalBases) from a list of TLC state lines.
+    Robustly extracts only the two named TLC sets (events and legalBases) from a list of TLC state lines.
     Returns dict {var_name: [raw_record_str, ...], ...}
     Ignores everything else. Each record can be multiline, supports arbitrary whitespace/newline.
     """
@@ -148,21 +148,21 @@ def parse_multiline_set_block(lines, set_var_name):
 
 
 def parse_state_vars(state_lines):
-    blocks = parse_tlc_set_block(list(state_lines), ['eventsToProcess', 'activeLegalBases'])
+    blocks = parse_tlc_set_block(list(state_lines), ['events', 'legalBases'])
     # Defensive logging and filtering
     print("PARSED BLOCKS:", {k: len(v) for k,v in blocks.items()}, file=sys.stderr)
-    events = [parse_event_line(rec) for rec in blocks['eventsToProcess'] if rec.strip().startswith('[')]
-    legal_bases = [parse_event_line(rec) for rec in blocks['activeLegalBases'] if rec.strip().startswith('[')]
+    events = [parse_event_line(rec) for rec in blocks['events'] if rec.strip().startswith('[')]
+    legal_bases = [parse_event_line(rec) for rec in blocks['legalBases'] if rec.strip().startswith('[')]
     # ...construct lanes/periods/events from these dicts as desired...
     print("DEBUG events:", events, file=sys.stderr)
     print("DEBUG legal_basis:", legal_bases, file=sys.stderr)
-    state = {"eventsToProcess": events, "activeLegalBases": legal_bases}
-    # Collect currentTime as before
+    state = {"events": events, "legalBases": legal_bases}
+    # Collect now as before
     for l in state_lines:
-        if l.strip().startswith('/\\ currentTime = ['):
+        if l.strip().startswith('/\\ now = ['):
             tp = re.search(r'\\[(.*?)\\]', l)
             if tp:
-                state['currentTime'] = parse_time_point(tp.group(1))
+                state['now'] = parse_time_point(tp.group(1))
     return state
 
 
@@ -215,13 +215,13 @@ def main(
     subject_periods = {}
     for st in states:
         # Legal bases
-        for lb in st.get('activeLegalBases', []):
+        for lb in st.get('legalBases', []):
             k = (lb['subject'], lb['data'], lb['type'])
             period = (lb['start'], lb['end']) if lb.get('start') and lb.get('end') else None
             if period:
                 subject_periods.setdefault(k, set()).add(period)
         # Processes
-        for p in st.get('activeProcesses', []):
+        for p in st.get('processes', []):
             k = (p['subject'], p['data'], 'Processing')
             period = (p['start'], p['end']) if p.get('start') and p.get('end') else None
             if period:

@@ -48,14 +48,14 @@ The model implements and formally verifies the following core GDPR principles:
 - **`EventTypes`**: The set of event types that can trigger state changes (e.g., `StartProcessing`, `GiveConsent`, `StartContract`).
 
 ### Variables
-- **`currentTime`**: The current system time, which advances with each event.
-- **`eventsToProcess`**: A set of pending events waiting to be executed.
-- **`activeProcesses`**: The set of all currently running data processing activities.
-- **`activeLegalBases`**: The set of all currently active legal bases.
-- **`incidentsInProgress`**: The set of recorded data incidents awaiting action.
+- **`now`**: The current system time, which advances with each event.
+- **`events`**: A set of pending events waiting to be executed.
+- **`processes`**: The set of all currently running data processing activities.
+- **`legalBases`**: The set of all currently active legal bases.
+- **`incidents`**: The set of recorded data incidents awaiting action.
 
 ### Actions
-- **Event Actions**: **`GiveConsent`**, **`WithdrawConsent`**, **`StartContract`**, **`EndContract`**, and **`StartProcessing`** are all triggered by events in `eventsToProcess`. These actions modify the system state in response to external events.
+- **Event Actions**: **`GiveConsent`**, **`WithdrawConsent`**, **`StartContract`**, **`EndContract`**, and **`StartProcessing`** are all triggered by events in `events`. These actions modify the system state in response to external events.
 - **State-Driven Actions**: **`ComplianceIncident`** and **`ReportIncident`** are triggered when system conditions are met, such as when a legal basis expires or a processing activity becomes unlawful.
 
 ***

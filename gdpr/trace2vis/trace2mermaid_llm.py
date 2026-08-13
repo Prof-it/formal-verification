@@ -88,13 +88,13 @@ def build_mermaid_prompt(tlc_trace: str) -> str:
 
 def extract_final_current_time(tlc_trace: str) -> str:
     """
-    Extract the final state's currentTime from the TLC trace as a string 'YYYY-MM-DD HH:MM'.
+    Extract the final state's now from the TLC trace as a string 'YYYY-MM-DD HH:MM'.
     Returns None if not found.
     """
-    # Find all lines like '/\ currentTime = [year |-> 2025, month |-> 7, day |-> 12, hour |-> 8, minute |-> 25]'
+    # Find all lines like '/\ now = [year |-> 2025, month |-> 7, day |-> 12, hour |-> 8, minute |-> 25]'
 
-    # Fix regex to match lines like '/\ currentTime = [ ... ]' robustly
-    current_time_lines = re.findall(r'/\\\s*currentTime\s*=\s*\[(.*?)\]', tlc_trace)
+    # Fix regex to match lines like '/\ now = [ ... ]' robustly
+    current_time_lines = re.findall(r'/\\\s*now\s*=\s*\[(.*?)\]', tlc_trace)
     if not current_time_lines:
         return None
     last_fields = current_time_lines[-1]
@@ -110,7 +110,7 @@ def extract_final_current_time(tlc_trace: str) -> str:
         )
         return dt.strftime('%Y-%m-%d %H:%M')
     except Exception as e:
-        print(f"[extract_final_current_time] Failed to parse currentTime: {e}", file=sys.stderr)
+        print(f"[extract_final_current_time] Failed to parse now: {e}", file=sys.stderr)
         return None
     
 def insert_deadline_milestone(mmd_code: str, deadline_time: str) -> str:
@@ -119,9 +119,9 @@ def insert_deadline_milestone(mmd_code: str, deadline_time: str) -> str:
     deadline_time: string 'YYYY-MM-DD HH:MM'
     Returns the modified Mermaid code.
     """
-    # Format for label: [Current Time, -, -, YYYY-MM-DD HH_MM] :milestone, deadline, YYYY-MM-DD HH:MM, 0d
+    # Format for label: [Now, -, -, YYYY-MM-DD HH_MM] :milestone, deadline, YYYY-MM-DD HH:MM, 0d
     label_time = deadline_time.replace(':', '_')
-    milestone_line = f"        [Current Time, {label_time}] :milestone, ct, {deadline_time}, 0d"
+    milestone_line = f"        [Now, {label_time}] :milestone, ct, {deadline_time}, 0d"
     lines = mmd_code.splitlines()
     # Find the Milestones section
     out_lines = []
@@ -347,7 +347,7 @@ def main(
         typer.echo("No TLC trace found in this file.", err=True)
         raise typer.Exit(1)
 
-    # Extract final state's currentTime as deadline
+    # Extract final state's now as deadline
     deadline_time = extract_final_current_time(trace)
     print(f"[DEBUG] Extracted deadline_time: {deadline_time}", file=sys.stderr)
 

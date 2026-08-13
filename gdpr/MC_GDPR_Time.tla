@@ -114,11 +114,11 @@ MC_InitialEventReportBreachNoViolation ==
 \* The original MC_InitialEvents is now deprecated and should not be used. Use MC_InitialEvent* constants instead.
     
 MC_Init ==
-    /\ currentTime = MinTime(InitialEvents)
-    /\ eventsToProcess = InitialEvents
-    /\ activeProcesses = {}
-    /\ activeLegalBases = {}
-    /\ incidentsInProgress = {}
+    /\ now = MinTime(InitialEvents)
+    /\ events = InitialEvents
+    /\ processes = {}
+    /\ legalBases = {}
+    /\ incidents = {}
 
 
 

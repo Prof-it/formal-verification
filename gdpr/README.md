@@ -72,7 +72,7 @@ To verify the model:
 Use **TLC** to verify invariants in the TLA+ model.  
 
 - The model defines `Spec` as the main specification.  
-- GDPR rules (`TypeInvariant`, `AllProcessingIsLawful`, `LegalBasesHaveValidType`, `IncidentReportedOnTime`) are listed in **`MC_GDPR_Time.cfg`**, so TLC will automatically check them as invariants.  
+- GDPR rules (`TypeInvariant`, `AllProcessingIsLawful`, `LegalBasesHaveValidType`, `IncidentReportedOnTime`) are listed in **`MC_GDPR_Time.tla`**, so TLC will automatically check them as invariants.  
 
 ### Download TLC  
 TLC is part of the [TLA+ Tools](https://github.com/tlaplus/tlaplus/releases).  
@@ -82,13 +82,13 @@ Download the latest `tla2tools.jar` and place it in your working directory.
 
 ```bash
 # Run with default configuration (MC_GDPR_Time.cfg will be used automatically)
-java -cp tla2tools.jar tlc2.TLC MC_GDPR_Time.tla
+java -cp ../tla_modules/tla2tools.jar tlc2.TLC MC_GDPR_Time.tla
 
 # Explicitly specify the config file (optional)
-java -cp tla2tools.jar tlc2.TLC MC_GDPR_Time.tla -config MC_GDPR_Time.cfg
+java -cp ../tla_modules/tla2tools.jar tlc2.TLC MC_GDPR_Time.tla -config MC_GDPR_Time.cfg
 
 # Limit exploration depth (optional)
-java -cp tla2tools.jar tlc2.TLC -depth 100 MC_GDPR_Time.tla
+java -cp ../tla_modules/tla2tools.jar tlc2.TLC -depth 100 MC_GDPR_Time.tla
 ```
 ### Sample TLC Output
 
@@ -103,9 +103,6 @@ Starting...
 Progress(202 states generated, 56 distinct states, 0 states left on queue.)
 Checking invariants:
   TypeInvariant               OK
-  AllProcessingIsLawful       OK
-  LegalBasesHaveValidType     OK
-  IncidentReportedOnTime        OK
 
 Model checking completed. No error has been found.
 

@@ -12,11 +12,10 @@ EventTypes == {"StartProcessing", "GiveConsent", "WithdrawConsent",
                                "StartContract", "EndContract", "DataBreachDetected", "DataBreachReported"}
 
 
-
-TimePoint == { e.time : e \in ObservedEvents } \cup { e.end_time : e \in ObservedEvents }
+TimePoint == { e.time : e \in ObservedEvents } \cup { FixedEndTime }
 
 Event == [type: EventTypes, time: TimePoint, subject: DataSubjects, 
-                                   data: Data, end_time: TimePoint]
+                                   data: Data]
 
 LegalBasis == [ type: {"Consent", "Contract"},
                 subject: DataSubjects,
@@ -47,12 +46,6 @@ InitialTime == IF ObservedEvents = {} THEN
                    [year |-> Min({FixedEpochYear} \cup YearRange), month |-> 1, day |-> 1, hour |-> 0, minute |-> 0]
                 ELSE MinTime(ObservedEvents)
 
-EndTime == IF ObservedEvents = {} THEN
-                [year |-> Max({FixedEpochYear} \cup YearRange), month |-> 12, day |-> 31, 
-                                               hour |-> 23, minute |-> 59]
-           ELSE MaxTime(ObservedEvents)
-
-
 
 Init == /\ now = InitialTime
         /\ events = ObservedEvents
@@ -68,7 +61,7 @@ StartProcessing(e) ==
     /\ processes' = processes \cup {[subject |-> e.subject,
                                                     data |-> e.data,
                                                     start|-> e.time,
-                                                     end |-> EndTime ]}
+                                                     end |-> FixedEndTime ]}
     /\ UNCHANGED <<legalBases, incidents, breaches>>
 
 GiveConsent(e) ==
@@ -79,7 +72,7 @@ GiveConsent(e) ==
                                                 subject |-> e.subject,
                                                 data    |-> e.data,
                                                 start   |-> e.time,
-                                                end     |-> EndTime]}
+                                                end     |-> FixedEndTime]}
     /\ UNCHANGED <<processes, incidents, breaches>>
 
 WithdrawConsent(e) ==
@@ -134,7 +127,7 @@ StartContract(e) ==
                                                  subject |-> e.subject,
                                                     data |-> e.data,
                                                    start |-> e.time,
-                                                     end |-> e.end_time]}
+                                                     end |-> FixedEndTime]}
     /\ UNCHANGED <<processes, incidents, breaches>>
 
 EndContract(e) ==
@@ -162,11 +155,13 @@ HasLegalBasis(p) ==
         /\ TimeBetween(l.start, l.end, now)
         
 
+ProcessIncidentRecorded(p) ==
+    \E i \in incidents: i.process = p /\ i.status = "Pending"
 
 ComplianceIncident ==
         \E p \in processes: 
             /\ ~HasLegalBasis(p) 
-            /\ [process |-> p, status |-> "Pending"] \notin incidents
+            /\ ~ProcessIncidentRecorded(p)
             /\ incidents' = incidents 
                                    \cup {[ process |-> p,
                                             status |-> "Pending",
@@ -183,10 +178,11 @@ RecordIncident ==
         /\ UNCHANGED <<now, processes, legalBases, events, breaches>>
 
 
-\* TerminateProcess action: removes processes whose end time has passed or legal basis is no longer valid
+
+\* TerminateProcess action: removes processes whose end time has passed or incidents have been recorded, and updates the processes set accordingly.
 TerminateProcess ==
     \E p \in processes:
-        ( ~HasLegalBasis(p)
+        ( ProcessIncidentRecorded(p)
           \/ ToMinutes(now) >= ToMinutes(p.end)
         )
         /\ processes' = processes \ {p}
@@ -201,12 +197,13 @@ RemoveUnreachableEvents ==
 
 \* Advances now to the next event's time if no other actions are enabled
 TimeAdvance ==
-    /\ events # {}
-    /\ LET t == MinTime(events)
-       IN /\ ToMinutes(now) < ToMinutes(t)
-          /\ now' = t
-    /\ UNCHANGED <<processes, legalBases, incidents, breaches, events>>
-
+    LET t ==
+        IF events # {} THEN MinTime(events)
+        ELSE FixedEndTime
+    IN
+        /\ ToMinutes(now) < ToMinutes(t)
+        /\ now' = t
+        /\ UNCHANGED <<processes, legalBases, incidents, breaches, events>>
 
 Next ==
     \* Event-driven actions

@@ -1,0 +1,20 @@
+gantt
+    dateFormat  YYYY-MM-DD HH:mm
+axisFormat .
+    title GDPR Scenario Visualization
+
+    section Milestones
+        [Now, 2025-07-15 10_00] :milestone, ct, 2310-10-25 12:55, 0d
+    [StartProcessing, bert, healthdata, 2025-07-12 08_25] :milestone, id1, 2120-08-16 01:51, 0d
+    [GiveConsent, bert, healthdata, 2025-07-12 08_20] :milestone, id2, 2025-07-12 08:20, 0d
+    [DataBreachReported, bert, healthdata, 2025-07-15 10_00] :milestone, id3, 2310-10-25 12:55, 0d
+    [DataBreachDetected, bert, healthdata, 2025-07-12 08_30] :milestone, id4, 2215-09-20 19:23, 0d
+
+    section Legal Bases
+    [Consent , bert , healthdata] :active, id5, 2025-07-12 08:20, 2405-11-28 06:27
+
+    section Processing
+    [Processing , bert , healthdata] :done, id6, 2120-08-16 01:51, 2405-11-28 06:27
+
+    section DataBreach
+    [DataBreach , bert , healthdata] :crit, id7, 2215-09-20 19:23, 2310-10-25 12:55

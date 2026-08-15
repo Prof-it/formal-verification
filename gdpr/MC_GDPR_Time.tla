@@ -24,18 +24,15 @@ MC_ObervedEventConsentWithdrawn ==
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "emaildata"],
         [type |-> "WithdrawConsent",
-         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
-         subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME],
-        [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->35],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME]
+         data |-> "emaildata"],
+        [type |-> "StartProcessing",
+         time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
+         subject |-> "erni",
+         data |-> "emaildata"]
     }
 
 MC_ObervedEventValidConsent ==
@@ -43,13 +40,11 @@ MC_ObervedEventValidConsent ==
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "emaildata"],
         [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME]
+         data |-> "emaildata"]
     }
 
 MC_ObervedEventMissingConsent ==
@@ -57,8 +52,7 @@ MC_ObervedEventMissingConsent ==
         [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME]
+         data |-> "emaildata"]
     }
 
 
@@ -67,23 +61,19 @@ MC_ObervedEventDeadlineViolation ==
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "emaildata"],
         [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "emaildata"],
         [type |-> "DataBreachDetected",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "emaildata"],
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->15, hour|->8, minute|->31],
          subject |-> "erni",
-         data |-> "emaildata",
-         end_time |-> MC_MAX_TIME]
+         data |-> "emaildata"]
     }
 
 \* Scenario: Data breach is reported, but the report is late (deadline violation)
@@ -92,23 +82,19 @@ MC_ObervedEventReportBreachLate ==
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
          subject |-> "bert",
-         data |-> "healthdata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "healthdata"],
         [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
          subject |-> "bert",
-         data |-> "healthdata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "healthdata"],
         [type |-> "DataBreachDetected",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
          subject |-> "bert",
-         data |-> "healthdata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "healthdata"],
         [type |-> "DataBreachReported",
-         time |-> [year|->2025, month|->7, day|->13, hour|->10, minute|->0], \* Reported late (next day)
+         time |-> [year|->2025, month|->7, day|->15, hour|->10, minute|->0], \* Reported late (next day)
          subject |-> "bert",
-         data |-> "healthdata",
-         end_time |-> MC_MAX_TIME]
+         data |-> "healthdata"]
     }
 
 \* New scenario: Correct report breach (no deadline violation)
@@ -117,23 +103,19 @@ MC_ObervedEventReportBreachNoViolation ==
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
          subject |-> "lisa",
-         data |-> "salarydata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "salarydata"],
         [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
          subject |-> "lisa",
-         data |-> "salarydata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "salarydata"],
         [type |-> "DataBreachDetected",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->30],
          subject |-> "lisa",
-         data |-> "salarydata",
-         end_time |-> MC_MAX_TIME],
+         data |-> "salarydata"],
         [type |-> "DataBreachReported",
          time |-> [year|->2025, month|->7, day|->12, hour|->9, minute|->0],
          subject |-> "lisa",
-         data |-> "salarydata",
-         end_time |-> MC_MAX_TIME]
+         data |-> "salarydata"]
     }
 
 \* The original MC_InitialEvents is now deprecated and should not be used. Use MC_InitialEvent* constants instead.

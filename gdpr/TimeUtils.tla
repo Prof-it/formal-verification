@@ -70,14 +70,14 @@ ToMinutes(tp) ==
         yearOffset + leapYearOffset + monthOffset + dayOffset + hourOffset + minuteOffset
 
 
-Before(t1, t2) == ToMinutes(t1) < ToMinutes(t2)
-After(t1, t2) == ToMinutes(t1) > ToMinutes(t2)
+Before(t1, t2) == ToMinutes(t1) <= ToMinutes(t2)
+After(t1, t2) == ToMinutes(t1) >= ToMinutes(t2)
 TimeBetween(t_start, t_end, t_test) == /\ Before(t_start, t_test) /\ Before(t_test, t_end)
 
 \* Help function for calculation if a time point occur within 72 hours.
 Within72Hours(start_time, end_time) == (ToMinutes(end_time) - ToMinutes(start_time)) <= 72 * 60
 
-TimePoints(events) == {e.time : e \in events} \cup {e.end_time : e \in events}
+TimePoints(events) == {e.time : e \in events}
 
 (* Earliest/latest time point in a set *)
 MinTime(events) ==

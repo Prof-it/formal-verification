@@ -4,7 +4,7 @@ EXTENDS Naturals, TimeUtils, Sequences
 CONSTANTS
     DataSubjects,
     Data,
-    InitialEvents
+    ObservedEvents
 
 
 \* Extend EventTypes for DataBreachDetected
@@ -13,7 +13,7 @@ EventTypes == {"StartProcessing", "GiveConsent", "WithdrawConsent",
 
 
 
-TimePoint == { e.time : e \in InitialEvents } \cup { e.end_time : e \in InitialEvents }
+TimePoint == { e.time : e \in ObservedEvents } \cup { e.end_time : e \in ObservedEvents }
 
 Event == [type: EventTypes, time: TimePoint, subject: DataSubjects, 
                                    data: Data, end_time: TimePoint]
@@ -43,19 +43,19 @@ VARIABLES
 
 vars == <<now, events, processes, legalBases, incidents, breaches>>
 
-InitialTime == IF InitialEvents = {} THEN
+InitialTime == IF ObservedEvents = {} THEN
                    [year |-> Min({FixedEpochYear} \cup YearRange), month |-> 1, day |-> 1, hour |-> 0, minute |-> 0]
-                ELSE MinTime(InitialEvents)
+                ELSE MinTime(ObservedEvents)
 
-EndTime == IF InitialEvents = {} THEN
+EndTime == IF ObservedEvents = {} THEN
                 [year |-> Max({FixedEpochYear} \cup YearRange), month |-> 12, day |-> 31, 
                                                hour |-> 23, minute |-> 59]
-           ELSE MaxTime(InitialEvents)
+           ELSE MaxTime(ObservedEvents)
 
 
 
 Init == /\ now = InitialTime
-        /\ events = InitialEvents
+        /\ events = ObservedEvents
         /\ processes = {}
         /\ legalBases = {}
         /\ incidents = {}
@@ -234,7 +234,7 @@ Spec == Init /\ [][Next]_vars /\ WF_vars(Next)
 ---------------------------------
 TypeInvariant ==
     /\ now \in TimePoint
-    /\ events \subseteq InitialEvents
+    /\ events \subseteq ObservedEvents
     /\ processes \subseteq Process
     /\ legalBases \subseteq LegalBasis
     /\ incidents \subseteq Incident

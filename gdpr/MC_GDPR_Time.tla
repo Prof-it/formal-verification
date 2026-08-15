@@ -19,7 +19,7 @@ MC_MinuteRange == {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
 \* All legal bases are now created by events.
 
 \* Dedicated initial event sets for each scenario
-MC_InitialEventConsentWithdrawn ==
+MC_ObervedEventConsentWithdrawn ==
     {
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
@@ -38,7 +38,7 @@ MC_InitialEventConsentWithdrawn ==
          end_time |-> MC_MAX_TIME]
     }
 
-MC_InitialEventValidConsent ==
+MC_ObervedEventValidConsent ==
     {
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
@@ -52,7 +52,7 @@ MC_InitialEventValidConsent ==
          end_time |-> MC_MAX_TIME]
     }
 
-MC_InitialEventMissingConsent ==
+MC_ObervedEventMissingConsent ==
     {
         [type |-> "StartProcessing",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->25],
@@ -62,7 +62,7 @@ MC_InitialEventMissingConsent ==
     }
 
 
-MC_InitialEventDeadlineViolation ==
+MC_ObervedEventDeadlineViolation ==
     {
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
@@ -87,7 +87,7 @@ MC_InitialEventDeadlineViolation ==
     }
 
 \* Scenario: Data breach is reported, but the report is late (deadline violation)
-MC_InitialEventReportBreachLate ==
+MC_ObervedEventReportBreachLate ==
     {
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
@@ -112,7 +112,7 @@ MC_InitialEventReportBreachLate ==
     }
 
 \* New scenario: Correct report breach (no deadline violation)
-MC_InitialEventReportBreachNoViolation ==
+MC_ObervedEventReportBreachNoViolation ==
     {
         [type |-> "GiveConsent",
          time |-> [year|->2025, month|->7, day|->12, hour|->8, minute|->20],
@@ -139,8 +139,8 @@ MC_InitialEventReportBreachNoViolation ==
 \* The original MC_InitialEvents is now deprecated and should not be used. Use MC_InitialEvent* constants instead.
     
 MC_Init ==
-    /\ now = MinTime(InitialEvents)
-    /\ events = InitialEvents
+    /\ now = MinTime(ObservedEvents)
+    /\ events = ObservedEvents
     /\ processes = {}
     /\ legalBases = {}
     /\ incidents = {}

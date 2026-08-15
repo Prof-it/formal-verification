@@ -18,7 +18,14 @@ LegalBasesHaveValidType ==
 Guarantees that data breaches (DPV-aligned) are reported within 72 hours of discovery.*)
 BreachReportedOnTime ==
     \A b \in breaches:
-        b.status = "Pending" => Within72Hours(b.event.time, now)
+        /\ (b.status = "Pending" =>
+            Within72Hours(b.event.time, now))
+        /\ (b.status = "Reported" =>
+            \E e \in ObservedEvents:
+                /\ e.type = "DataBreachReported"
+                /\ e.subject = b.event.subject
+                /\ e.data = b.event.data
+                /\ Within72Hours(b.event.time, e.time))
 --------------------------------
 
 THEOREM Spec => []TypeInvariant

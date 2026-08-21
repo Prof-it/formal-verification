@@ -12,6 +12,10 @@ if str(SRC_DIR) not in sys.path:
 
 from agentic_loop.engine import (
     _write_module,
+    PurgeStats,
+    _coerce_module_dir,
+    purge_temp_modules,
+    sanitize_quantifier_bounds,
     classify_tlc_error,
     extract_invariant_code,
     parse_tlc_trace,
@@ -121,6 +125,7 @@ class EngineUnitTests(unittest.TestCase):
             module_dir = Path(tmp_dir)
             cfg_path = module_dir / "Test.cfg"
             cfg_path.write_text("INVARIANT Safety\n", encoding="utf-8")
+            (module_dir / "Test.tla").write_text("---- MODULE Test ----\n====\n", encoding="utf-8")
 
             task = TaskSpec(
                 name="test_task",
@@ -174,9 +179,9 @@ class EngineUnitTests(unittest.TestCase):
                 "agentic_loop.engine.load_skills",
                 return_value=[{"key": "inv", "strategy": "repair", "pattern": "violated"}],
             ), patch("agentic_loop.engine.save_tlc_log", return_value="results/logs/mock.txt"), patch(
-                "agentic_loop.engine.persist_run_result",
-                return_value={"json": "out.json", "csv": "out.csv"},
-            ), patch("agentic_loop.engine.write_violation_report") as report_mock:
+                "agentic_loop.engine.persist_run_result"
+            ) as persist_mock, patch("agentic_loop.engine.write_violation_report") as report_mock:
+                persist_mock.return_value = {"json": "out.json", "csv": "out.csv"}
                 artifacts = run_experiment(
                     task=task,
                     config=config,
@@ -187,6 +192,48 @@ class EngineUnitTests(unittest.TestCase):
 
             self.assertEqual(artifacts, {"json": "out.json", "csv": "out.csv"})
             report_mock.assert_called_once()
+
+            run_record = persist_mock.call_args[0][0]
+            self.assertTrue(run_record.generation_success)
+            self.assertFalse(run_record.initial_verification_success)
+            self.assertEqual(run_record.counterexamples_seen, 1)
+            self.assertEqual(run_record.counterexamples_resolved, 0)
+            self.assertEqual(run_record.skills_applied, ["inv"])
+            self.assertEqual(run_record.skills_successful, 0)
+            self.assertFalse(run_record.human_intervention)
+
+    def test_coerce_module_dir_normalizes_strings(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = _coerce_module_dir(tmp_dir)
+            self.assertTrue(path.exists())
+            self.assertTrue(path.is_dir())
+
+    def test_coerce_module_dir_rejects_tuple_payloads(self):
+        with self.assertRaises(TypeError):
+            _coerce_module_dir(("foo", "bar"))
+
+    def test_sanitize_quantifier_bounds_rewrites_subset(self):
+        original = r"\A x \subseteq S : x"  # TLC would reject this bound
+        expected = r"\A x \in SUBSET (S) : x"
+        sanitized = sanitize_quantifier_bounds(original)
+        self.assertEqual(sanitized, expected)
+
+    def test_sanitize_quantifier_bounds_leaves_valid_bounds(self):
+        original = r"\A x \in SUBSET S : x"
+        sanitized = sanitize_quantifier_bounds(original)
+        self.assertEqual(sanitized, original)
+
+    def test_purge_temp_modules_removes_directories(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            staged_dir = root / "task_abc123"
+            staged_dir.mkdir()
+            file = staged_dir / "dummy.txt"
+            file.write_text("hello", encoding="utf-8")
+            stats = purge_temp_modules("task", root)
+            self.assertFalse(staged_dir.exists())
+            self.assertGreaterEqual(stats.removed_directories, 1)
+            self.assertGreaterEqual(stats.reclaimed_bytes, len("hello"))
 
 
 if __name__ == "__main__":

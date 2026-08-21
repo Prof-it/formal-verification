@@ -8,5 +8,10 @@
     "key": "invariant_violation",
     "pattern": "Invariant (\\w+) is violated",
     "strategy": "Analyze the counterexample trace to locate the violation, and repair the invariant or corresponding spec logic."
+  },
+  {
+    "key": "python_command_requires_venv",
+    "pattern": "(?i)^(python(3)?|pip(3)?|pytest)(\\s|$)",
+    "strategy": "Prefix the command with 'source agentic_loop_paper/.venv/bin/activate &&' so execution occurs within the project virtual environment."
   }
 ]

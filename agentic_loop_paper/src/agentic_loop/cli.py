@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .engine import run_experiment
+from .engine import run_experiment, validate_module_layout
 from .models import LoopConfig
 from .providers import build_provider
 
@@ -34,10 +34,13 @@ def main() -> None:
     task = load_task_spec(args.task)
     provider = build_provider(args.provider, args.model, args.replay_dir)
 
+    module_dir = Path(args.module_dir).expanduser().resolve()
+    validate_module_layout(task, module_dir)
+
     config = LoopConfig(
         tla_jar_path=args.tla_jar,
-        module_dir=args.module_dir,
-        output_dir=args.output_dir,
+        module_dir=module_dir,
+        output_dir=Path(args.output_dir).expanduser().resolve(),
         prompt_mode=args.prompt_mode,
         max_iterations=args.max_iterations,
         timeout_seconds=args.timeout_seconds,

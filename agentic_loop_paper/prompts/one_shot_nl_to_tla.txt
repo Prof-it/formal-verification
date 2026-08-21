@@ -6,8 +6,8 @@ Output Format:
 
 Important:
 - Only use a single prime (') for next-state variables. Never write variables with two or more primes, e.g., x'' is invalid in TLA+.
-- Every invariant referenced in the configuration file (such as DDMR26 and TypeOK) MUST be defined in your TLA+ specification using exactly the same name.
-- The DDMR26 invariant must represent the requirement in this task, and be named exactly DDMR26.
+- Every invariant referenced in the configuration file (such as TypeOK) MUST be defined in your TLA+ specification using exactly the same name.
+- The problem relevant invariant Problem_Inv must represent the requirement in this task, and be named exactly DDMR26.
 - The TypeOK invariant must capture the type/range/domain of all variables, named exactly TypeOK.
 
 Example Requirement:
@@ -25,7 +25,7 @@ Init == /\ tokenOwner = 0
 TypeOK == /\ tokenOwner \in 0..N-1
           /\ tokenColor \in {{"black", "white"}}
           /\ nodeColor \in [0..N-1 -> {{"black", "white"}}]
-DDMR26 == TRUE \* Replace with the required property about critical state indication
+Problem_Inv == TRUE \* Replace with the required property about critical state indication
 ProbeStep == /\ tokenOwner = 0
              /\ (tokenColor = "black" \/ nodeColor[0] = "black")
              /\ tokenOwner' = N-1

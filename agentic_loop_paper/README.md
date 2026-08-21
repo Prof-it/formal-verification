@@ -38,7 +38,8 @@ mkdir -p replay_outputs
 Run baseline mode:
 
 ```bash
-PYTHONPATH=src python3 -m agentic_loop.cli \
+source .venv/bin/activate
+PYTHONPATH=src python -m agentic_loop.cli \
   --task tasks/nasa_ddmr26_sample.yaml \
   --tla-jar /path/to/tla2tools.jar \
   --module-dir /Users/tianxiang.lu/dev/formal-verification/agentic_loop_paper/tla \
@@ -53,7 +54,8 @@ PYTHONPATH=src python3 -m agentic_loop.cli \
 Run loop mode:
 
 ```bash
-PYTHONPATH=src python3 -m agentic_loop.cli \
+source .venv/bin/activate
+PYTHONPATH=src python -m agentic_loop.cli \
   --task tasks/nasa_ddmr26_sample.yaml \
   --tla-jar /path/to/tla2tools.jar \
   --module-dir /Users/tianxiang.lu/dev/formal-verification/agentic_loop_paper/tla \
@@ -69,8 +71,9 @@ PYTHONPATH=src python3 -m agentic_loop.cli \
 ## Run With OpenAI-Compatible Provider
 
 ```bash
+source .venv/bin/activate
 export OPENAI_API_KEY=<api_key>
-PYTHONPATH=src python3 -m agentic_loop.cli \
+PYTHONPATH=src python -m agentic_loop.cli \
   --task tasks/nasa_ddmr26_sample.yaml \
   --tla-jar /path/to/tla2tools.jar \
   --module-dir /Users/tianxiang.lu/dev/formal-verification/agentic_loop_paper/tla \
@@ -86,16 +89,15 @@ PYTHONPATH=src python3 -m agentic_loop.cli \
 This command runs both modes on the same task and writes a consolidated comparison report.
 
 ```bash
-PYTHONPATH=src python3 -m agentic_loop.compare_cli \
-  --task tasks/nasa_ddmr26_sample.yaml \
+source .venv/bin/activate
+PYTHONPATH=src python -m agentic_loop.compare_cli \
+  --task tasks/beginner/car_talk_puzzle.yaml \
   --tla-jar /path/to/tla2tools.jar \
-  --module-dir /Users/tianxiang.lu/dev/formal-verification/agentic_loop_paper/tla \
-  --output-dir results/comparison \
   --prompts-dir prompts \
   --prompt-mode one_shot \
   --max-iterations 3 \
-  --provider replay \
-  --replay-dir replay_outputs
+  --provider openai \
+  --model gpt-4o
 ```
 
 Generated artifacts:
@@ -122,3 +124,7 @@ Each run writes:
 - `<task>_attempts.csv`: tabular attempt-level summary
 
 These outputs are sufficient to report baseline-vs-loop outcomes with minimal analysis overhead.
+
+## Metric Instrumentation
+
+Automated runs persist the evaluation metrics enumerated in [`verifier_in_the_loop.tex`](agentic_loop_paper/verifier_in_the_loop.tex:105). [`persist_run_result`](agentic_loop_paper/src/agentic_loop/reporting.py:15) emits JSON fields for generation and verification success, counterexample statistics, skill usage traces, learning step indices, and human intervention flags. [`compare_cli`](agentic_loop_paper/src/agentic_loop/compare_cli.py:37) consumes these values when producing CSV/Markdown summaries and can optionally aggregate learning efficiency across runs via `--learning-series` inputs.

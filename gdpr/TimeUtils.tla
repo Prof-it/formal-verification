@@ -88,6 +88,7 @@ MinTime(events) ==
       LET minVal == Min({ToMinutes(t) : t \in times}) IN
         CHOOSE t \in times : ToMinutes(t) = minVal
 
+
 \* The latest time point within a set of events
 MaxTime(events) ==
   IF events = {} THEN FixedEndTime

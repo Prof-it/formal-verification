@@ -1,0 +1,15 @@
+flowchart LR
+    R["Requirement"] --> P["Prompt Renderer"] --> G["LLM Provider"]
+    G -->|Spec Draft| T["TLA+ Snapshot Writer"]
+    T --> TLC["TLC Runner"]
+    TLC -->|Pass| O["Persisted Run Artifacts"]
+    TLC -->|Violation/Errors| D["Diagnosis Instrumentation"]
+    D --> K["Skill Rules (static)"]
+    K --> RP["Repair Prompt (parse/semantic)"]
+    RP --> G
+    subgraph Modes[Modes]
+        BL["Baseline (1 attempt)"]
+        LP["Loop (≤ max_iterations)"]
+    end
+    BL -. config .-> P
+    LP -. config .-> P

@@ -61,7 +61,7 @@ def discover_search_roots(workspace_root: Path) -> List[Path]:
     candidates = [
         workspace_root / "tla_modules",
         workspace_root / "external",
-        workspace_root / "agentic_loop_paper",
+        workspace_root / "agentic_loop",
         workspace_root / "gdpr",
         workspace_root / "blockchain",
         workspace_root / "iot",
@@ -347,7 +347,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--tasks-dir",
         type=Path,
         default=None,
-        help="Root directory containing YAML tasks (defaults to <workspace>/agentic_loop_paper/tasks)",
+        help="Root directory containing YAML tasks (defaults to <workspace>/agentic_loop/tasks)",
     )
     parser.add_argument(
         "--output-json",
@@ -365,7 +365,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
     workspace_root = args.workspace_root.resolve()
-    tasks_dir = args.tasks_dir or workspace_root / "agentic_loop_paper" / "tasks"
+    tasks_dir = args.tasks_dir or workspace_root / "agentic_loop" / "tasks"
     tasks_dir = tasks_dir.resolve()
 
     if not tasks_dir.exists():

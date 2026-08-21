@@ -12,6 +12,6 @@
   {
     "key": "python_command_requires_venv",
     "pattern": "(?i)^(python(3)?|pip(3)?|pytest)(\\s|$)",
-    "strategy": "Prefix the command with 'source agentic_loop_paper/.venv/bin/activate &&' so execution occurs within the project virtual environment."
+    "strategy": "Prefix the command with 'source agentic_loop/.venv/bin/activate &&' so execution occurs within the project virtual environment."
   }
 ]

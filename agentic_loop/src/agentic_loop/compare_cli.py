@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import argparse
 import csv
@@ -13,6 +12,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from .engine import purge_temp_modules, run_experiment, validate_module_layout
 from .models import LoopConfig
 from .providers import build_provider
+
 
 
 TASK_MAPPINGS_PATH = Path("results/task_mappings.json")
@@ -77,6 +77,24 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--prompts-dir", default="prompts", help="Prompt template directory")
     parser.add_argument("--prompt-mode", choices=["zero_shot", "one_shot"], default="one_shot")
+
+    parser.add_argument(
+        "--num-trials",
+        type=int,
+        default=1,
+        help="Number of stochastic trials per mode (default: 1)",
+    )
+    parser.add_argument(
+        "--trial-seed-offset",
+        type=int,
+        default=None,
+        help="Seed offset for deterministic seeding (optional)",
+    )
+    parser.add_argument(
+        "--checkpoint-gated",
+        action="store_true",
+        help="If set, stop repair as soon as TLC passes in any iteration (loop mode only)",
+    )
     parser.add_argument("--max-iterations", type=int, default=3)
     parser.add_argument("--timeout-seconds", type=int, default=180)
 
@@ -169,7 +187,7 @@ def _infer_toolbox_root(path: Path) -> Path:
     return current
 
 
-def _stage_module_dir(task: Path, task_spec: Any, module_root: Path) -> Optional[StagedModule]:
+def _stage_module_dir(task: Path, task_spec: Any, module_root: Path) -> Optional['StagedModule']:
     module_root = module_root.expanduser().resolve()
     module_root.mkdir(parents=True, exist_ok=True)
     purge_temp_modules(task_spec.name, module_root)
@@ -184,6 +202,19 @@ def _stage_module_dir(task: Path, task_spec: Any, module_root: Path) -> Optional
     selected = candidates[0]
     toolbox_root = _infer_toolbox_root(selected.path)
     stage_source = toolbox_root.parent if toolbox_root.parent != toolbox_root else toolbox_root
+
+    # PROTECTION: Prevent recursive or project-root copy!
+    project_root = Path(__file__).resolve()
+    for parent in project_root.parents:
+        if parent.name == 'agentic_loop':
+            project_root = parent.resolve()
+            break
+    # Do not allow copytree if stage_source is or contains the project root
+    if project_root in stage_source.resolve().parents or stage_source.resolve() == project_root:
+        warnings.warn(
+            f"Refusing to recursively stage/copy project root directory '{project_root}' (source: '{stage_source}') for task '{task_spec.name}'."
+        )
+        return None
 
     tmp_parent = Path(tempfile.mkdtemp(prefix=f"{task_spec.name}_", dir=str(module_root.resolve())))
     staged_source = tmp_parent / stage_source.name
@@ -213,6 +244,7 @@ def _stage_module_dir(task: Path, task_spec: Any, module_root: Path) -> Optional
         module_root=module_root,
         cleanup=None,
     )
+
 
 
 def _resolve_module_dir(
@@ -325,7 +357,63 @@ def _write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
         for row in rows:
             writer.writerow(row)
 
-
+# Metrics writer inserted immediately after imports
+def _write_trial_metrics_csv(csv_path: Path, trial_json: dict, trial_id: int, mode: str, seed=None):
+    """
+    Writes a per-trial metrics.csv summarizing trial and all attempts for reporting and ETECOM reproducibility
+    """
+    # Overall trial summary row keys
+    summary_keys = [
+        "trial_id",
+        "mode",
+        "seed",
+        "terminal_status",
+        "parse_success_rate",
+        "semantic_success_rate",
+        "generation_success",
+        "initial_verification_success",
+        "repair_iterations",
+        "regression",
+        "total_errors",
+        "human_intervention"
+    ]
+    # Derive summary values
+    summary = {
+        "trial_id": trial_id,
+        "mode": mode,
+        "seed": seed,
+        "terminal_status": trial_json.get("terminal_status"),
+        "parse_success_rate": trial_json.get("parse_success_rate"),
+        "semantic_success_rate": trial_json.get("semantic_success_rate"),
+        "generation_success": trial_json.get("generation_success"),
+        "initial_verification_success": trial_json.get("initial_verification_success"),
+        "repair_iterations": trial_json.get("repair_iterations"),
+        "regression": trial_json.get("regression", None),
+        "total_errors": sum(int(a.get("error_count", 0)) for a in trial_json.get("attempts", [])),
+        "human_intervention": bool(trial_json.get("human_intervention", False)),
+    }
+    # Columns for each attempt
+    attempt_cols = [
+        "attempt_id", "phase", "prompt_name", "status", "parse_ok", "semantic_ok", "invariants_violated", "error_count"]
+    with csv_path.open("w", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(summary_keys)
+        writer.writerow([summary[k] for k in summary_keys])
+        writer.writerow([])
+        writer.writerow(["trial_id", "mode"] + attempt_cols)
+        for a in trial_json.get("attempts", []):
+            writer.writerow([
+                trial_id,
+                mode,
+                a.get("attempt_id"),
+                a.get("phase"),
+                a.get("prompt_name"),
+                a.get("status"),
+                a.get("parse_ok"),
+                a.get("semantic_ok"),
+                a.get("invariants_violated"),
+                a.get("error_count")
+            ])
 def _to_markdown(rows: List[Dict[str, Any]]) -> str:
     header = (
         "| Mode | TerminalStatus | Attempts | ParseSuccessRate | SemanticSuccessRate | GenerationSuccess | "
@@ -446,10 +534,16 @@ def main() -> None:
         baseline_jsons = []
         loop_jsons = []
 
+
         for trial in range(1, num_trials + 1):
-            # Set up per-trial output dirs
-            baseline_trial_out = baseline_out / f"trial_{trial:02d}"
-            loop_trial_out = loop_out / f"trial_{trial:02d}"
+            # Always output to task/mode/trial_XX, even for num_trials=1, for full reproducibility/aggregation
+            # Determine task name for consistent directory naming
+            task_id = getattr(task, "name", None) or getattr(args, "task", None) or "default_task"
+            # Use the pattern: results/comparison/<task_name>/baseline/trial_XX/, etc
+            baseline_trials_root = root_out / "baseline"
+            loop_trials_root = root_out / "loop"
+            baseline_trial_out = baseline_trials_root / f"trial_{trial:02d}"
+            loop_trial_out = loop_trials_root / f"trial_{trial:02d}"
             baseline_trial_out.mkdir(parents=True, exist_ok=True)
             loop_trial_out.mkdir(parents=True, exist_ok=True)
 
@@ -477,7 +571,10 @@ def main() -> None:
             baseline_json = _load_json(baseline_artifacts["json"])
             baseline_jsons.append(baseline_json)
 
-            # Loop mode
+            # Write baseline metrics
+            _write_trial_metrics_csv(baseline_trial_out / "metrics.csv", baseline_json, trial, "baseline", seed)
+
+            # Loop mode with regression tracking
             loop_provider = build_provider(args.provider, args.model, args.replay_dir)
             loop_cfg = LoopConfig(
                 tla_jar_path=args.tla_jar,
@@ -497,7 +594,27 @@ def main() -> None:
                 mode="loop",
             )
             loop_json = _load_json(loop_artifacts["json"])
+
+            # --- Step 2: Regression tracking ---
+            # Track TLC status sequence for this trial
+            regression_flag = False
+            tlc_statuses = []
+            for attempt in loop_json.get("attempts", []):
+                tlc_statuses.append(attempt.get("status", ""))
+            # Regression: TLC success followed by any later non-success
+            seen_success = False
+            for status in tlc_statuses:
+                if status == "success":
+                    seen_success = True
+                elif seen_success and status != "success":
+                    regression_flag = True
+                    break
+            loop_json["regression"] = regression_flag
+            # Early stop (checkpoint gating) already handled in run_experiment
             loop_jsons.append(loop_json)
+
+            # Write loop metrics
+            _write_trial_metrics_csv(loop_trial_out / "metrics.csv", loop_json, trial, "loop", seed)
 
         # Summarize all trials
         rows = []
@@ -542,20 +659,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    parser.add_argument(
-        "--num-trials",
-        type=int,
-        default=1,
-        help="Number of stochastic trials per mode (default: 1)",
-    )
-    parser.add_argument(
-        "--trial-seed-offset",
-        type=int,
-        default=None,
-        help="Seed offset for deterministic seeding (optional)",
-    )
-    parser.add_argument(
-        "--checkpoint-gated",
-        action="store_true",
-        help="If set, stop repair as soon as TLC passes in any iteration (loop mode only)",
-    )

@@ -1,4 +1,8 @@
 #!/bin/zsh
+#!/bin/zsh
+
+# Always resolve the directory this script is in
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Load OpenAI API key from .env file in project root (using grep and export)
 if [[ -f .env ]]; then
@@ -15,6 +19,14 @@ fi
 # Path to TLA tools JAR and project layout
 TLA_JAR="tla/tla2tools.jar"
 
+### Always use venv's python3 if available ###
+PYTHON_BIN="$SCRIPT_DIR/.venv/bin/python3"
+if ! [ -x "$PYTHON_BIN" ]; then
+  echo "ERROR: $PYTHON_BIN does not exist or is not executable. Please ensure your virtual environment is set up correctly."
+  exit 1
+fi
+echo "Using Python interpreter: $PYTHON_BIN"
+
 # Run the agentic_loop comparison experiment for each beginner task
 for TASK_FILE in tasks/beginner/*.yaml; do
   TASK_NAME=$(basename "$TASK_FILE" .yaml)
@@ -23,7 +35,7 @@ for TASK_FILE in tasks/beginner/*.yaml; do
   FIGURES_DIR="figures/$TASK_NAME"
 
   echo "Running comparison for task: $TASK_NAME"
-  PYTHONPATH=src python -m agentic_loop.compare_cli \
+  PYTHONPATH=src "$PYTHON_BIN" -m agentic_loop.compare_cli \
     --task "$TASK_FILE" \
     --tla-jar $TLA_JAR \
     --output-dir "$COMPARISON_DIR" \
@@ -34,7 +46,7 @@ for TASK_FILE in tasks/beginner/*.yaml; do
     --model gpt-4o
 
   echo "Generating plots for task: $TASK_NAME"
-  PYTHONPATH=src python -m agentic_loop.plot_results \
+  PYTHONPATH=src "$PYTHON_BIN" -m agentic_loop.plot_results \
     --results-root "$RESULTS_ROOT" \
     --task "$TASK_NAME" \
     --output-dir "$FIGURES_DIR"

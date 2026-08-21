@@ -1,8 +1,13 @@
+.env
+
 # TLA+ Toolbox files
 *.tla.state
 *.tla.backup
 *.tla.history
 *.tla.log
+
+# Python files
+*.pyc
 
 # Build and temporary files
 *.aux
@@ -53,20 +58,26 @@ p2p/p2p.drawio
 gdpr/states/*
 
 tla_modules/.tlc_Scenario*
+states/*
+
+gdpr/*.md
+gdpr/*.tex
+gdpr/trace2vis/__pycache__/*
+
+
+# Agentic Loop files
 agentic_loop/.env
 agentic_loop/base_text.txt
 agentic_loop/replay_outputs/.gitkeep
 agentic_loop/src/agentic_loop/__pycache__/*
 agentic_loop/tla/*
 agentic_loop/results/*
-.env
+
 agentic_loop/states/*
 agentic_loop/*.md
 agentic_loop/paper/*
 agentic_loop/plans/*
-states/*
 agentic_loop/tests/__pycache__/*
-gdpr/*.md
-gdpr/*.tex
-gdpr/trace2vis/__pycache__/*
 agentic_loop/src/__pycache__/*
+agentic_loop/modules/*
+

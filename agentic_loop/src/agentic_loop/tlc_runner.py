@@ -5,10 +5,12 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
+import logging
 
 import os
 
 
+logging.basicConfig(level=logging.INFO)
 
 PARSE_PATTERNS = [
     re.compile(r"Parse Error", re.IGNORECASE),
@@ -77,7 +79,7 @@ def run_tlc(
         module_name,
     ]
     # Debug: print full command and working directory
-    print(f"[TLC] Command: {' '.join(command)} | cwd={os.path.abspath(module_dir)}")
+    logging.info(f"[TLC] Command: {' '.join(command)} | cwd={os.path.abspath(module_dir)}")
 
     try:
         proc = subprocess.run(
@@ -90,7 +92,7 @@ def run_tlc(
         )
     except subprocess.TimeoutExpired as exc:
         output = f"{exc.stdout or ''}\n{exc.stderr or ''}"
-        print(f"TLC Timeout Output:\n{output}")
+        logging.info(f"TLC Timeout Output:\n{output}")
         return TLCResult(
             status="timeout",
             parse_ok=False,

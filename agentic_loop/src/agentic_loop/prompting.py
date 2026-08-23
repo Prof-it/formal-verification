@@ -7,6 +7,7 @@ PROMPT_FILES = {
     "one_shot": "one_shot_nl_to_tla.txt",
     "fix_parse": "fix_parse.txt",
     "fix_semantic": "fix_semantic.txt",
+    "cfg_generation": "cfg_generation.txt"
 }
 
 

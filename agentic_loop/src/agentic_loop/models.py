@@ -51,6 +51,7 @@ class AttemptRecord:
     skills_applied: List[str] = field(default_factory=list)
     skills_successful: bool = False
     human_intervention: bool = False
+    timing: Dict[str, float] = field(default_factory=dict)
 
 
 @dataclass

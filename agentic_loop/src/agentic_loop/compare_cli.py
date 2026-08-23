@@ -12,7 +12,15 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from .engine import purge_temp_modules, run_experiment, validate_module_layout
 from .models import LoopConfig
 from .providers import build_provider
+import numpy as np
+from statsmodels.stats.contingency_tables import mcnemar
+from .task_loader import load_task_spec
 
+from collections import Counter
+
+import os
+import glob
+import tempfile
 
 
 TASK_MAPPINGS_PATH = Path("results/task_mappings.json")
@@ -117,6 +125,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional directory containing run JSON files to aggregate learning efficiency (sorted lexicographically).",
     )
+    parser.add_argument(
+        "--no-patch", action="store_true",
+        help="If set, disables domain patching (raw LLM output only for both baseline and loop)"
+    )
+
     return parser.parse_args()
 
 
@@ -279,9 +292,19 @@ def _resolve_module_dir(
     if staged_result and staged_result.root.exists():
         return staged_result
 
-    raise FileNotFoundError(
-        "Unable to locate module directory. Provide --module-dir or ensure mappings are available."
+    # If no module directory is found or mapped, create a fresh temp dir and let the bootstrap take over
+    import tempfile
+    fresh_moduledir = Path(tempfile.mkdtemp(prefix=f"{task_spec.name}_", dir=str(module_root.resolve())))
+    print(f"[Bootstrap-Module] No input module-dir given; created temp dir: {fresh_moduledir}")
+    # Will contain no .tla input, so validate_module_layout/bootstrap fallback will trigger
+    return StagedModule(
+        root=fresh_moduledir,
+        task_name=task_spec.name,
+        module_root=module_root,
+        cleanup=None,
     )
+
+
 
 
 def _load_json(path: str) -> Dict[str, Any]:
@@ -500,11 +523,335 @@ def _compute_learning_efficiency(series: List[Dict[str, Any]]) -> Dict[str, Any]
         "step_span": step_span,
     }
 
+def _write_case_metrics_csv(csv_path, case_metrics_list):
+    """
+    Writes out a CSV summarizing per-case/canonical metrics for every run
+    """
+    keys = [
+        "case_id", "mode", "initial_candidate", "initial_status", "final_status",
+        "repair_attempts", "repair_success",
+        "initial_failure_classes", "resolved_failure_classes", "remaining_failure_classes", "artifact_dir"
+    ]
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=keys)
+        writer.writeheader()
+        for cm in case_metrics_list:
+            # Convert substructure to string for csv
+            row = cm.copy()
+            for k, v in row.items():
+                if isinstance(v, (dict, list)):
+                    row[k] = json.dumps(v)
+            writer.writerow(row)
+
+
+def _summarize_case_metrics(case_metrics_list):
+    """
+    Print overall metrics such as CRSR, ISR, FSR and failure-class repairability.
+    """
+    n_total = len(case_metrics_list)
+    # Use dicts directly, not json.loads()
+    isr = sum(1 for c in case_metrics_list if (c.get("initial_status") or {}).get("tlc")) / n_total if n_total else 0
+    fsr = sum(1 for c in case_metrics_list if (c.get("final_status") or {}).get("tlc")) / n_total if n_total else 0
+    failing = [c for c in case_metrics_list if not (c.get("initial_status") or {}).get("tlc")]
+    n_failing = len(failing)
+    crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
+    print(f"Initial TLC Success Rate (ISR): {isr:.2%} ({sum(1 for c in case_metrics_list if (c.get('initial_status') or {}).get('tlc'))}/{n_total})")
+    print(f"Final TLC Success Rate (FSR): {fsr:.2%} ({sum(1 for c in case_metrics_list if (c.get('final_status') or {}).get('tlc'))}/{n_total})")
+    print(f"Conditional Repair Success Rate (CRSR): {crsr:.2%} ({sum(1 for c in failing if (c.get('final_status') or {}).get('tlc'))}/{n_failing if n_failing else 1})")
+    # Failure class repairability table
+    fc_table = {}
+    for case in failing:
+        fclist = case.get("initial_failure_classes", [])
+        if isinstance(fclist, str):
+            try:
+                fclist = json.loads(fclist)
+            except Exception:
+                fclist = []
+        for fc in fclist:
+            if fc not in fc_table:
+                fc_table[fc] = {"total": 0, "repaired": 0}
+            fc_table[fc]["total"] += 1
+            if (case.get("final_status") or {}).get("tlc"):
+                fc_table[fc]["repaired"] += 1
+    print("\n| Failure class | Cases | Repaired | Repairability |")
+    print("|--------------|-------|----------|--------------|")
+    for fc, val in sorted(fc_table.items()):
+        total = val["total"]
+        repaired = val["repaired"]
+        print(f"| {fc} | {total} | {repaired} | {repaired/total:.1%} |")
+
+def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
+    from collections import Counter
+    mcnemar, binom_test = None, None
+    try:
+        from statsmodels.stats.contingency_tables import mcnemar
+    except ImportError:
+        mcnemar = None
+    try:
+        from scipy.stats import binom_test
+    except ImportError:
+        binom_test = None
+
+    before_after = []
+    for c in case_metrics_list:
+        ini = bool((c.get("initial_status") or {}).get("tlc", False))
+        fin = bool((c.get("final_status") or {}).get("tlc", False))
+        before_after.append((ini, fin))
+    counts = Counter(before_after)
+    FF = counts[(False, False)]
+    FP = counts[(False, True)]   # Fail→Pass
+    PF = counts[(True, False)]   # Pass→Fail
+    PP = counts[(True, True)]
+    n = FF + FP + PF + PP
+
+    lines = []
+    lines.append("\nPaired TLC outcomes:\n")
+    lines.append("Initial TLC  | After TLC Fail | After TLC Pass |\n")
+    lines.append("-------------|----------------|---------------|\n")
+    lines.append(f"Fail         |   {FF:<14d}| {FP:<14d}|\n")
+    lines.append(f"Pass         |   {PF:<14d}| {PP:<14d}|\n")
+
+    lines.append(f"\nMcNemar's test on discordant pairs (Fail→Pass={FP}, Pass→Fail={PF})\n")
+    if mcnemar is not None:
+        table = [[FF, FP], [PF, PP]]
+        result = mcnemar(table, exact=True)
+        pval = None
+        # Try all known ways to get a p-value
+        if hasattr(result, "pvalue"):
+            pval = getattr(result, "pvalue")
+        elif hasattr(result, "__dict__") and "pvalue" in result.__dict__:
+            pval = result.__dict__["pvalue"]
+        elif isinstance(result, dict) and "pvalue" in result:
+            pval = result["pvalue"]
+        if pval is not None:
+            lines.append(f"McNemar p-value: {pval:.3g}\n")
+        elif binom_test is not None:
+            # Safe to access here!
+            b = FP
+            c = PF
+            discordant = b + c
+            if discordant > 0:
+                p = 2 * binom_test(min(b, c), n=discordant, p=0.5, alternative='two-sided')
+                lines.append(f"Binomial p-value (McNemar fallback): {p:.3g}\n")
+            else:
+                lines.append("Binomial test not applicable (no discordant pairs).\n")
+        else:
+            # Manual fallback: binomial p-value calculation for McNemar test (two-tailed) at p=0.5, only standard library.
+            import math
+            def binom_coeff(n, k):
+                return math.comb(n, k)
+            b = FP
+            c = PF
+            discordant = b + c
+            if discordant > 0:
+                k = min(b, c)
+                # Two-sided: sum prob(X <= k) * 2 (for symmetry at p=0.5)
+                prob = sum(binom_coeff(discordant, i) * (0.5 ** discordant) for i in range(0, k+1))
+                p_conservative = 2 * prob
+                lines.append(f"Approximate binomial (no-scipy) p-value: {p_conservative:.3g}\n")
+            else:
+                lines.append("No discordant pairs: cannot compute binomial p-value.\n")
+
+    elif binom_test is not None:
+        b = FP
+        c = PF
+        discordant = b + c
+        if discordant > 0:
+            p = 2 * binom_test(min(b, c), n=discordant, p=0.5, alternative='two-sided')
+            lines.append(f"Binomial p-value (McNemar fallback): {p:.3g}\n")
+        else:
+            lines.append("Binomial test not applicable (no discordant pairs).\n")
+    else:
+        lines.append("Install statsmodels or scipy for p-value.\n")
+
+
+    # Extra insight
+    lines.append(f"Conditional repair success rate: {FP}/({FF+FP}) = {(FP/(FF+FP) if (FF+FP)>0 else 0):.1%}\n")
+    lines.append(f"Baseline TLC pass rate: {(PF+PP)/n:.1%}\n")
+    lines.append(f"Loop TLC pass rate:     {(FP+PP)/n:.1%}\n")
+
+    summary_text = "".join(lines)
+    print(summary_text)
+    with open(summary_path, "w", encoding="utf-8") as out_f:
+        out_f.write(summary_text)
+    print(f"\n==> McNemar summary written to {summary_path}")
+
+
+def mcnemar_markdown(case_metrics_list, md_path="mcnemar_summary.md"):
+
+    before_after = []
+    for c in case_metrics_list:
+        ini = bool((c.get("initial_status") or {}).get("tlc", False))
+        fin = bool((c.get("final_status") or {}).get("tlc", False))
+        before_after.append((ini, fin))
+    counts = Counter(before_after)
+    FF = counts[(False, False)]
+    FP = counts[(False, True)]
+    PF = counts[(True, False)]
+    PP = counts[(True, True)]
+    table = f"""
+|                | After TLC Fail | After TLC Pass |
+|:---------------|:--------------|:--------------|
+| Before: Fail   | {FF}           | {FP}           |
+| Before: Pass   | {PF}           | {PP}           |
+"""
+    result = mcnemar([[FF, FP],[PF, PP]], exact=True)
+    md = (
+        "# Paired TLC outcome table (for McNemar's test)\n"
+        f"{table}\n"
+        f"McNemar p-value: {result.pvalue:.3g}\n"
+        f"Conditional repair success: {FP}/({FF+FP}) = {(FP/(FF+FP) if (FF+FP)>0 else 0):.1%}\n"
+        f"Baseline TLC pass rate: {(PF+PP)/(FF+FP+PF+PP):.1%}\n"
+        f"Loop TLC pass rate:     {(FP+PP)/(FF+FP+PF+PP):.1%}\n"
+    )
+    with open(md_path, "w", encoding="utf-8") as out_f:
+        out_f.write(md)
+    print(f"McNemar summary written to {md_path}")
+
+def mcnemar_csv(case_metrics_list, csv_path="mcnemar_summary.csv"):
+    before_after = []
+    for c in case_metrics_list:
+        ini = bool((c.get("initial_status") or {}).get("tlc", False))
+        fin = bool((c.get("final_status") or {}).get("tlc", False))
+        before_after.append((ini, fin))
+    counts = Counter(before_after)
+    FF = counts[(False, False)]
+    FP = counts[(False, True)]
+    PF = counts[(True, False)]
+    PP = counts[(True, True)]
+    with open(csv_path, "w", newline='', encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["", "After TLC Fail", "After TLC Pass"])
+        writer.writerow(["Before: Fail", FF, FP])
+        writer.writerow(["Before: Pass", PF, PP])
+    print(f"McNemar table written to {csv_path}")
+
+# Gather all per-attempt timings from both modes
+def collect_all_timings(baseline_jsons, loop_jsons):
+    all_llm = []
+    all_tlc = []
+    all_ovh = []
+    all_total = []
+    all_runs = baseline_jsons + loop_jsons
+    for run in all_runs:
+        for attempt in run.get("attempts", []):
+            timing = attempt.get("timing", {})
+            # Only include attempts where timing is present and non-empty
+            if timing and "duration_llm" in timing:
+                all_llm.append(float(timing.get("duration_llm", 0)))
+                all_tlc.append(float(timing.get("duration_tlc", 0)))
+                all_ovh.append(float(timing.get("duration_engineering_overhead", 0)))
+                all_total.append(float(timing.get("duration_total", 0)))
+    return all_llm, all_tlc, all_ovh, all_total
+
+def timing_stats(times):
+    if not times:
+        return ("—", "—", "—", "—", 0)
+    return (
+        round(float(np.mean(times)), 2),
+        round(float(np.median(times)), 2),
+        round(float(np.min(times)), 2),
+        round(float(np.max(times)), 2),
+        len(times)
+    )
+def fmt(v, width=5):
+    if isinstance(v, (int, float)):
+        return f"{v:>{width}.2f}"
+    return f"{v:>{width}}"
+
+def fmt_int(v, width=3):
+    if isinstance(v, int):
+        return f"{v:>{width}d}"
+    return f"{v:>{width}}"
+
+def copytree_symlink_safe(src, dst):
+    # Recursively copy a directory tree (src) into new location (dst)
+    # Overwrites dst if exists; skips symlinks for extra safety.
+    if os.path.exists(dst):
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst, symlinks=False, dirs_exist_ok=True)
+    # Failure class repairability table per mode
+    def failure_class_table(cases, label):
+        failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
+        fc_table = {}
+        for case in failing:
+            fclist = case.get("initial_failure_classes", [])
+            if isinstance(fclist, str):
+                try:
+                    fclist = json.loads(fclist)
+                except Exception:
+                    fclist = []
+            for fc in fclist:
+                if fc not in fc_table:
+                    fc_table[fc] = {"total": 0, "repaired": 0}
+                fc_table[fc]["total"] += 1
+                if (case.get("final_status") or {}).get("tlc"):
+                    fc_table[fc]["repaired"] += 1
+        print(f"\n| Failure class ({label}) | Cases | Repaired | Repairability |")
+        print("|----------------------|-------|----------|--------------|")
+        for fc, val in sorted(fc_table.items()):
+            total = val["total"]
+            repaired = val["repaired"]
+            rep_rate = (repaired/total)*100 if total > 0 else 0
+            print(f"| {fc} | {total} | {repaired} | {rep_rate:.1f}% |")
+
+def summarize_case_metrics_per_mode(baseline_cases, loop_cases):
+    """
+    Print ISR/FSR/CRSR/failure-class repairability per mode side-by-side.
+    """
+    import json
+    # Helper for stats extraction
+    def extract_stats(cases):
+        n_total = len(cases)
+        isr = sum(1 for c in cases if (c.get("initial_status") or {}).get("tlc")) / n_total if n_total else 0
+        fsr = sum(1 for c in cases if (c.get("final_status") or {}).get("tlc")) / n_total if n_total else 0
+        failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
+        n_failing = len(failing)
+        crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
+        return dict(ISR=isr, FSR=fsr, CRSR=crsr, n_total=n_total, n_failing=n_failing)
+    b_stats = extract_stats(baseline_cases)
+    l_stats = extract_stats(loop_cases)
+
+    print("\nSuccess Rate Comparison (per mode):")
+    print("| Metric | Baseline | Loop |")
+    print("|--------|----------|------|")
+    print(f"| ISR    | {b_stats['ISR']:.2%} ({sum(1 for c in baseline_cases if (c.get('initial_status') or {}).get('tlc'))}/{b_stats['n_total']}) | "
+          f"{l_stats['ISR']:.2%} ({sum(1 for c in loop_cases if (c.get('initial_status') or {}).get('tlc'))}/{l_stats['n_total']}) |")
+    print(f"| FSR    | {b_stats['FSR']:.2%} ({sum(1 for c in baseline_cases if (c.get('final_status') or {}).get('tlc'))}/{b_stats['n_total']}) | "
+          f"{l_stats['FSR']:.2%} ({sum(1 for c in loop_cases if (c.get('final_status') or {}).get('tlc'))}/{l_stats['n_total']}) |")
+    print(f"| CRSR   | {b_stats['CRSR']:.2%} ({sum(1 for c in [c for c in baseline_cases if not (c.get('initial_status') or {}).get('tlc')] if (c.get('final_status') or {}).get('tlc'))}/{b_stats['n_failing'] if b_stats['n_failing'] else 1}) | "
+          f"{l_stats['CRSR']:.2%} ({sum(1 for c in [c for c in loop_cases if not (c.get('initial_status') or {}).get('tlc')] if (c.get('final_status') or {}).get('tlc'))}/{l_stats['n_failing'] if l_stats['n_failing'] else 1}) |")
+
+    # Failure class repairability table per mode
+    def failure_class_table(cases, label):
+        failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
+        fc_table = {}
+        for case in failing:
+            fclist = case.get("initial_failure_classes", [])
+            if isinstance(fclist, str):
+                try:
+                    fclist = json.loads(fclist)
+                except Exception:
+                    fclist = []
+            for fc in fclist:
+                if fc not in fc_table:
+                    fc_table[fc] = {"total": 0, "repaired": 0}
+                fc_table[fc]["total"] += 1
+                if (case.get("final_status") or {}).get("tlc"):
+                    fc_table[fc]["repaired"] += 1
+        print(f"\n| Failure class ({label}) | Cases | Repaired | Repairability |")
+        print("|----------------------|-------|----------|--------------|")
+        for fc, val in sorted(fc_table.items()):
+            total = val["total"]
+            repaired = val["repaired"]
+            rep_rate = (repaired/total)*100 if total > 0 else 0
+            print(f"| {fc} | {total} | {repaired} | {rep_rate:.1f}% |")
+    failure_class_table(baseline_cases, "baseline")
+    failure_class_table(loop_cases, "loop")
 
 def main() -> None:
     args = parse_args()
-
-    from .task_loader import load_task_spec
+    apply_patch = not args.no_patch
 
     task_path = Path(args.task)
     task = load_task_spec(args.task)
@@ -550,11 +897,16 @@ def main() -> None:
             # Optionally set seed for reproducibility
             seed = (trial_seed_offset + trial) if trial_seed_offset is not None else None
 
+            modules_baseline = baseline_trial_out / "modules"
+            copytree_symlink_safe(module_dir, modules_baseline)
+
+
+
             # Baseline mode
             baseline_provider = build_provider(args.provider, args.model, args.replay_dir)
             baseline_cfg = LoopConfig(
                 tla_jar_path=args.tla_jar,
-                module_dir=module_dir,
+                module_dir=modules_baseline,
                 output_dir=baseline_trial_out,
                 prompt_mode=args.prompt_mode,
                 max_iterations=args.max_iterations,
@@ -567,18 +919,25 @@ def main() -> None:
                 prompts_dir=args.prompts_dir,
                 provider=baseline_provider,
                 mode="baseline",
+                apply_patch=apply_patch,
             )
+
             baseline_json = _load_json(baseline_artifacts["json"])
             baseline_jsons.append(baseline_json)
+
 
             # Write baseline metrics
             _write_trial_metrics_csv(baseline_trial_out / "metrics.csv", baseline_json, trial, "baseline", seed)
 
+
             # Loop mode with regression tracking
+            # Loop -- per-trial input copy
+            modules_loop = loop_trial_out / "modules"
+            copytree_symlink_safe(module_dir, modules_loop)
             loop_provider = build_provider(args.provider, args.model, args.replay_dir)
             loop_cfg = LoopConfig(
                 tla_jar_path=args.tla_jar,
-                module_dir=module_dir,
+                module_dir=modules_loop,
                 output_dir=loop_trial_out,
                 prompt_mode=args.prompt_mode,
                 max_iterations=args.max_iterations,
@@ -592,6 +951,7 @@ def main() -> None:
                 prompts_dir=args.prompts_dir,
                 provider=loop_provider,
                 mode="loop",
+                apply_patch=apply_patch,
             )
             loop_json = _load_json(loop_artifacts["json"])
 
@@ -656,6 +1016,74 @@ def main() -> None:
             print(json.dumps(learning_summary, indent=2))
         print("\n" + md_table)
 
+        all_case_metrics = []
+        for j in range(num_trials):
+            all_case_metrics.append(baseline_jsons[j].get("case_metrics", {}))
+            all_case_metrics.append(loop_jsons[j].get("case_metrics", {}))
+        csv_path = root_out / "case_metrics.csv"
+        _write_case_metrics_csv(csv_path, all_case_metrics)
+        _summarize_case_metrics(all_case_metrics)
+
+
+        all_case_metrics = []
+        baseline_cases = []
+        loop_cases = []
+        for j in range(num_trials):
+            # Baseline
+            b = baseline_jsons[j]
+            entry_b = {
+                "mode": "baseline",
+                "initial_status": {"tlc": bool(
+                    b.get("InitialVerificationSuccess", b.get("initial_verification_success", False))
+                )},
+                "final_status": {"tlc": bool(
+                    b.get("TerminalStatus", b.get("terminal_status", "")) == "success"
+                )},
+                "initial_failure_classes": b.get("FailureClasses", b.get("failure_classes", []))
+            }
+            all_case_metrics.append(entry_b)
+            baseline_cases.append(entry_b)
+            # Loop
+            l = loop_jsons[j]
+            entry_l = {
+                "mode": "loop",
+                "initial_status": {"tlc": bool(
+                    l.get("InitialVerificationSuccess", l.get("initial_verification_success", False))
+                )},
+                "final_status": {"tlc": bool(
+                    l.get("TerminalStatus", l.get("terminal_status", "")) == "success"
+                )},
+                "initial_failure_classes": l.get("FailureClasses", l.get("failure_classes", []))
+            }
+            all_case_metrics.append(entry_l)
+            loop_cases.append(entry_l)
+
+        csv_path = root_out / "case_metrics.csv"
+        _write_case_metrics_csv(csv_path, all_case_metrics)
+
+        # New summary: print separate and side-by-side aggregated stats per mode
+        summarize_case_metrics_per_mode(baseline_cases, loop_cases)
+
+
+        all_llm, all_tlc, all_ovh, all_total = collect_all_timings(baseline_jsons, loop_jsons)
+
+        print("\nTiming statistics per phase (seconds):")
+        phases = [
+            ("LLM call", all_llm),
+            ("TLC call", all_tlc),
+            ("Engineering overhead", all_ovh),
+            ("Total step", all_total)
+        ]
+        print("| Phase                | Mean | Median | Min | Max | Attempts |")
+        print("|--------------------- |------|--------|-----|-----|----------|")
+
+        for label, data in phases:
+            mean_, median_, min_, max_, N_ = timing_stats(data)
+            print(f"| {label:<20} | {fmt(mean_)} | {fmt(median_,6)} | {fmt(min_,3)} | {fmt(max_,3)} | {fmt_int(N_,3)} |")
+
+        mcnemar_analysis(all_case_metrics, summary_path=str(root_out / "mcnemar_summary.txt"))
+        mcnemar_markdown(all_case_metrics, md_path=str(root_out / "mcnemar_summary.md"))
+        mcnemar_csv(all_case_metrics, csv_path=str(root_out / "mcnemar_summary.csv"))
 
 if __name__ == "__main__":
     main()

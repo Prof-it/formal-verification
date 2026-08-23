@@ -63,6 +63,7 @@ def persist_run_result(run: RunResult, output_dir: str) -> Dict[str, str]:
         writer.writeheader()
         for attempt in run.attempts:
             row = attempt.__dict__.copy()
+            row.pop("timing", None)
             row["skills_applied"] = ",".join(attempt.skills_applied)
             writer.writerow(row)
 

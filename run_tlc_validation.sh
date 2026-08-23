@@ -47,7 +47,6 @@ fi
 
 # Create output directory
 mkdir -p "${OUTPUT_DIR}"
-mkdir -p "${OUTPUT_DIR}/logs"
 
 # Initialize CSV header
 echo "Scenario,Configuration,Timestamp,Status,TotalStates,DistinctStates,Depth,Run1(ms),Run2(ms),Run3(ms),MeanWallTime(ms),StdDev(ms),CI95HalfWidth(ms),ViolationsFound,Notes" > "${RESULTS_CSV}"

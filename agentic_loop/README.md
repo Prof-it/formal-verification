@@ -76,6 +76,48 @@ The aggregate CSV and Markdown files summarize all trials for both modes.
 
 You may re-run with a different provider (e.g. `--provider openai --model gpt-4o`) or non-default seeds as needed.
 
+
+## Reproducing the NASA DDMR26 Experiment
+
+To run the agentic loop comparison for the NASA DDMR26 sample task and save results under `results/nasa_ddmr26`:
+
+1. **Change into the agentic_loop directory:**
+   ```sh
+   cd /Users/tianxiang.lu/dev/formal-verification/agentic_loop
+   ```
+
+2. **Activate the Python virtual environment:**
+   ```sh
+   source .venv/bin/activate
+   ```
+
+3. **Run the experiment CLI:**
+   ```sh
+   PYTHONPATH=src python -m agentic_loop.compare_cli \
+     --task tasks/nasa_ddmr26_sample.yaml \
+     --tla-jar tla/tla2tools.jar \
+     --output-dir results/nasa_ddmr26 \
+     --prompts-dir prompts \
+     --prompt-mode one_shot \
+     --max-iterations 3 \
+     --provider openai \
+     --model gpt-4o \
+     --module-dir tla
+   ```
+
+**Result files** will appear in:
+```
+agentic_loop/results/nasa_ddmr26/nasa_ddmr26/comparison_nasa_ddmr26.csv
+agentic_loop/results/nasa_ddmr26/nasa_ddmr26/comparison_nasa_ddmr26.md
+```
+and metrics for each trial/mode are in subfolders within `results/nasa_ddmr26/nasa_ddmr26/`.
+
+**Requirements:**
+- `tla2tools.jar`, `CLA_Generated.tla`, `CLA_generation_eval.cfg`, and `manifest.json` must all be present in the `tla/` directory.
+- All commands should be run from within the `agentic_loop` directory.
+
+---
+
 ## Output and Artifacts
 
 ### NASA DDMR-26 Baseline Assets

@@ -13,5 +13,10 @@
     "key": "python_command_requires_venv",
     "pattern": "(?i)^(python(3)?|pip(3)?|pytest)(\\s|$)",
     "strategy": "Prefix the command with 'source agentic_loop/.venv/bin/activate &&' so execution occurs within the project virtual environment."
+  },
+  {
+    "key": "cfg_spec_mismatch",
+    "pattern": "constant parameter .* not assigned a value|INI(T|TIAL) is not defined|NEXT is not defined|Error:.*invariant.*not (defined|declared)|Error:.*is not a predicate|is not an operator declared in module",
+    "strategy": "Check that .cfg and .tla interface match."
   }
 ]

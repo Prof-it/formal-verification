@@ -1,0 +1,11 @@
+You are a formal specification expert. Given the TLA+ module below and the requirement text, write ONLY a valid TLC model configuration (.cfg). 
+1. Use the correct operator names for INIT and NEXT.
+2. For invariants, list only those relevant as invariants (not actions or transitions, do not include operators with primed variables).
+3. Preserve correct indentation and format.
+Here is the module:
+{{ tla_module }}
+
+Task: {{ task_name }}
+Requirements: {{ task_requirements }}
+
+Write the configuration (no explanations):

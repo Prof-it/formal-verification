@@ -666,7 +666,6 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
 
 
     # Extra insight
-    lines.append(f"Conditional repair success rate: {FP}/({FF+FP}) = {(FP/(FF+FP) if (FF+FP)>0 else 0):.1%}\n")
     lines.append(f"Baseline TLC pass rate: {(PF+PP)/n:.1%}\n")
     lines.append(f"Loop TLC pass rate:     {(FP+PP)/n:.1%}\n")
 
@@ -1031,6 +1030,7 @@ def main() -> None:
         for j in range(num_trials):
             # Baseline
             b = baseline_jsons[j]
+            b_case_metrics = b.get("case_metrics", {})
             entry_b = {
                 "mode": "baseline",
                 "initial_status": {"tlc": bool(
@@ -1039,12 +1039,14 @@ def main() -> None:
                 "final_status": {"tlc": bool(
                     b.get("TerminalStatus", b.get("terminal_status", "")) == "success"
                 )},
-                "initial_failure_classes": b.get("FailureClasses", b.get("failure_classes", []))
+                "initial_failure_classes": b_case_metrics.get("initial_failure_classes", [])
             }
             all_case_metrics.append(entry_b)
             baseline_cases.append(entry_b)
+
             # Loop
             l = loop_jsons[j]
+            l_case_metrics = l.get("case_metrics", {})
             entry_l = {
                 "mode": "loop",
                 "initial_status": {"tlc": bool(
@@ -1053,10 +1055,10 @@ def main() -> None:
                 "final_status": {"tlc": bool(
                     l.get("TerminalStatus", l.get("terminal_status", "")) == "success"
                 )},
-                "initial_failure_classes": l.get("FailureClasses", l.get("failure_classes", []))
+                "initial_failure_classes": l_case_metrics.get("initial_failure_classes", [])
             }
-            all_case_metrics.append(entry_l)
             loop_cases.append(entry_l)
+
 
         csv_path = root_out / "case_metrics.csv"
         _write_case_metrics_csv(csv_path, all_case_metrics)

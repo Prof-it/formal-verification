@@ -406,9 +406,10 @@ def get_failure_classes_from_attempt(attempt):
 def patch_cfg_with_constants(spec_text: str, cfg_path: str, attempt_id: str) -> str:
     declared_constants = set()
     for line in spec_text.splitlines():
-        m = re.match(r'\s*CONSTANT\s+([a-zA-Z_][a-zA-Z0-9_]*)', line)
-        if m:
-            declared_constants.add(m.group(1))
+        mconst = re.match(r'\s*CONSTANTS?\s+([A-Za-z_][A-Za-z0-9_, ]*)', line)
+        if mconst:
+            names = [x.strip() for x in mconst.group(1).split(",")]
+            declared_constants.update(names)
     with open(cfg_path, encoding="utf-8") as f:
         cfg_lines = f.read().splitlines()
     assigned_constants = set()

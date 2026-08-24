@@ -1,0 +1,24 @@
+flowchart LR 
+    R["Natural-Language Requirement"] --> P["Prompt Renderer"] 
+    P --> G["LLM Provider"] 
+    G --> S["TLA+ Snapshot Writer"] 
+    S --> T["TLC Runner"] 
+
+    T -->|Pass| O["Persist Run Artifacts"] 
+    T -->|Violation / Error| D["Diagnosis Instrumentation"] 
+    
+    D --> K["Static Skill Rules<br/>Deterministic • Stateless"] 
+    K --> RP["Repair Prompt<br/>TLC Feedback + Prior Spec"] 
+    RP --> G 
+    
+    subgraph "Execution Modes" 
+        BL["Baseline<br/>1 generation + 1 TLC"] 
+        LP["Verifier-in-the-Loop<br/>≤ max_iterations"] 
+    end 
+    
+    BL -.-> P 
+    LP -.-> P 
+    
+    M["No persistent memory<br/>No learned repair policy<br/>No cross-trial adaptation"] 
+    
+    K --- M

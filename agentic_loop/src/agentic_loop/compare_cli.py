@@ -130,6 +130,11 @@ def parse_args() -> argparse.Namespace:
         help="If set, disables domain patching (raw LLM output only for both baseline and loop)"
     )
 
+    parser.add_argument(
+        "--analyze-only", action="store_true",
+        help="If set, only computes statistics/aggregates existing JSON results without running any new experiments"
+    )
+
     return parser.parse_args()
 
 
@@ -592,15 +597,22 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
     except ImportError:
         binom_test = None
 
+
+    # Patch: Ensure true pairing between baseline and loop metrics.
+    # Expect list to be [baseline1, loop1, baseline2, loop2, ...]
     before_after = []
-    for c in case_metrics_list:
-        ini = bool((c.get("initial_status") or {}).get("tlc", False))
-        fin = bool((c.get("final_status") or {}).get("tlc", False))
-        before_after.append((ini, fin))
+    if len(case_metrics_list) % 2 != 0:
+        print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
+    for i in range(0, len(case_metrics_list)-1, 2):
+        base = case_metrics_list[i]
+        loop = case_metrics_list[i+1]
+        base_tlc = bool((base.get("final_status") or {}).get("tlc", False))
+        loop_tlc = bool((loop.get("final_status") or {}).get("tlc", False))
+        before_after.append((base_tlc, loop_tlc))
     counts = Counter(before_after)
     FF = counts[(False, False)]
-    FP = counts[(False, True)]   # Fail→Pass
-    PF = counts[(True, False)]   # Pass→Fail
+    FP = counts[(False, True)]   # Baseline fail, Loop pass: repaired!
+    PF = counts[(True, False)]   # Baseline pass, Loop fail: regression (should be 0)
     PP = counts[(True, True)]
     n = FF + FP + PF + PP
 
@@ -611,7 +623,7 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
     lines.append(f"Fail         |   {FF:<14d}| {FP:<14d}|\n")
     lines.append(f"Pass         |   {PF:<14d}| {PP:<14d}|\n")
 
-    lines.append(f"\nMcNemar's test on discordant pairs (Fail→Pass={FP}, Pass→Fail={PF})\n")
+    lines.append(f"\nMcNemar's test on discordant pairs (Baseline fail→Loop pass={FP}, Baseline pass→Loop fail={PF})\n")
     if mcnemar is not None:
         table = [[FF, FP], [PF, PP]]
         result = mcnemar(table, exact=True)
@@ -678,11 +690,16 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
 
 def mcnemar_markdown(case_metrics_list, md_path="mcnemar_summary.md"):
 
+    # Patch: true pairing
     before_after = []
-    for c in case_metrics_list:
-        ini = bool((c.get("initial_status") or {}).get("tlc", False))
-        fin = bool((c.get("final_status") or {}).get("tlc", False))
-        before_after.append((ini, fin))
+    if len(case_metrics_list) % 2 != 0:
+        print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
+    for i in range(0, len(case_metrics_list)-1, 2):
+        base = case_metrics_list[i]
+        loop = case_metrics_list[i+1]
+        base_tlc = bool((base.get("final_status") or {}).get("tlc", False))
+        loop_tlc = bool((loop.get("final_status") or {}).get("tlc", False))
+        before_after.append((base_tlc, loop_tlc))
     counts = Counter(before_after)
     FF = counts[(False, False)]
     FP = counts[(False, True)]
@@ -708,11 +725,16 @@ def mcnemar_markdown(case_metrics_list, md_path="mcnemar_summary.md"):
     print(f"McNemar summary written to {md_path}")
 
 def mcnemar_csv(case_metrics_list, csv_path="mcnemar_summary.csv"):
+    # Patch: true pairing
     before_after = []
-    for c in case_metrics_list:
-        ini = bool((c.get("initial_status") or {}).get("tlc", False))
-        fin = bool((c.get("final_status") or {}).get("tlc", False))
-        before_after.append((ini, fin))
+    if len(case_metrics_list) % 2 != 0:
+        print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
+    for i in range(0, len(case_metrics_list)-1, 2):
+        base = case_metrics_list[i]
+        loop = case_metrics_list[i+1]
+        base_tlc = bool((base.get("final_status") or {}).get("tlc", False))
+        loop_tlc = bool((loop.get("final_status") or {}).get("tlc", False))
+        before_after.append((base_tlc, loop_tlc))
     counts = Counter(before_after)
     FF = counts[(False, False)]
     FP = counts[(False, True)]
@@ -851,6 +873,37 @@ def summarize_case_metrics_per_mode(baseline_cases, loop_cases):
 def main() -> None:
     args = parse_args()
     apply_patch = not args.no_patch
+
+    if args.analyze_only:
+        output_dir = Path(args.output_dir)
+        trials = args.num_trials if args.num_trials and args.num_trials > 0 else 1
+
+        baseline_jsons = []
+        loop_jsons = []
+
+        for i in range(1, trials + 1):
+            base_path = output_dir / "baseline" / f"trial_{i:02d}" / "run.json"
+            loop_path = output_dir / "loop" / f"trial_{i:02d}" / "run.json"
+            if not base_path.exists() or not loop_path.exists():
+                print(f"[WARN] Missing results for trial={i}: {base_path} {loop_path}")
+                continue
+            with open(base_path, "r") as bf:
+                baseline_jsons.append(json.load(bf))
+            with open(loop_path, "r") as lf:
+                loop_jsons.append(json.load(lf))
+
+        all_case_metrics = []
+        for j in range(len(baseline_jsons)):
+            all_case_metrics.append(baseline_jsons[j].get("case_metrics", {}))
+            all_case_metrics.append(loop_jsons[j].get("case_metrics", {}))
+
+        _summarize_case_metrics(all_case_metrics)
+        mcnemar_analysis(all_case_metrics, summary_path=str(output_dir / "mcnemar_summary.txt"))
+        mcnemar_markdown(all_case_metrics, md_path=str(output_dir / "mcnemar_summary.md"))
+        mcnemar_csv(all_case_metrics, csv_path=str(output_dir / "mcnemar_summary.csv"))
+
+        print(f"Analysis-only mode complete. {len(baseline_jsons)} trials analyzed.")
+        return  # Exit after aggregate
 
     task_path = Path(args.task)
     task = load_task_spec(args.task)

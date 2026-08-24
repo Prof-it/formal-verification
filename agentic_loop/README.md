@@ -1,5 +1,19 @@
 # Agentic Loop Paper Subproject
 
+---
+
+## Recent Updates (August 2026)
+
+- **Expanded Failure Class Reporting:**
+  - The platform now provides more granular failure mode and failure class analysis in experiment outputs. Results for both the `baseline` and `loop` modes display breakdowns of failure classes in CSV and Markdown summaries, supporting deeper insight into verification and repair performance.
+- **Patch for CONSTANTS Handling:**
+  - Improved handling of TLA+ `CONSTANTS` in model generation/repair means the system now correctly supports and tracks constants during patch and repair cycles. Outputs/statistics now reflect these cases without conflating errors.
+- **Reporting of CRSR:**
+  - The "CRSR" class is now reported only for Loop mode, yielding more precise error-type statistics per experiment mode.
+- **Refactoring of engine.py:**
+  - Major internal refactoring of `src/agentic_loop/engine.py` improves code quality while maintaining the public CLI workflow. If you use internals, check the updated implementations for best practice alignment.
+
+
 This subproject is isolated from the main repository workflow and provides a compact platform for NL-to-TLA experiment runs used in the paper.
 
 ## Scope
@@ -118,7 +132,17 @@ and metrics for each trial/mode are in subfolders within `results/nasa_ddmr26/na
 
 ---
 
+
+---
+
 ## Output and Artifacts
+
+
+### Enhanced Failure Mode and Class Metrics
+
+All experiment outputs now include further breakdown of failure mode and class, for both baseline and loop modes, making it easier to diagnose where repair processes succeed or fail. Metrics appear in each per-trial `metrics.csv`, plus summary CSV/Markdown, and now include exact logic regarding TLA+ `CONSTANTS` error handling. Consult the `results/comparison/<task_name>/comparison_<task_name>.csv` and corresponding `.md` for detailed breakdowns.
+
+---
 
 ### NASA DDMR-26 Baseline Assets
 

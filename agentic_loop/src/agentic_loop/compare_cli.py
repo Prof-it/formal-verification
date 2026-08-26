@@ -17,8 +17,15 @@ from statsmodels.stats.contingency_tables import mcnemar
 from .task_loader import load_task_spec
 
 from collections import Counter
+from dotenv import load_dotenv
 
 import os
+
+# Add dotenv support for automatic .env loading
+try:
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
+except ImportError:
+    pass  # If dotenv is not installed, skip loading .env
 import glob
 import tempfile
 

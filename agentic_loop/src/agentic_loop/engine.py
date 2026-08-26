@@ -420,8 +420,8 @@ def run_experiment(
     human_intervention_callback: Optional[Callable[[AttemptRecord], bool]] = None,
     learning_step_index: Optional[int] = None,
     apply_patch: bool = True,
+    initial_spec_override: Optional[str] = None  # NEW: for paired experiment initial spec injection
 ) -> Dict[str, str]:
-
     overall_start_time = time.time()
 
     unpatched_attempts = []
@@ -484,6 +484,7 @@ def run_experiment(
     successful_skill_uses = 0
     human_intervention_flag = False
 
+
     for attempt_id in range(1, max_iterations + 1):
         phase = "generate" if attempt_id == 1 else "repair"
         # --- Timing: attempt overall ---
@@ -493,7 +494,17 @@ def run_experiment(
         # --- Timing: LLM call ---
         attempt_timing["start_llm"] = time.time()
 
-        generated = provider.generate(current_prompt, {"attempt_id": str(attempt_id), "phase": phase})
+        # Paired experiment: for loop mode, attempt 1, use the override if provided
+        if (
+            mode == "loop"
+            and attempt_id == 1
+            and initial_spec_override is not None
+            and os.path.exists(initial_spec_override)
+        ):
+            with open(initial_spec_override, "r", encoding="utf-8") as f:
+                generated = f.read()
+        else:
+            generated = provider.generate(current_prompt, {"attempt_id": str(attempt_id), "phase": phase})
 
 
 

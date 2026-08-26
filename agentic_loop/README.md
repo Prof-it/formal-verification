@@ -40,16 +40,20 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+
 ## Run Multi-Trial Baseline-vs-Loop Stochastic Comparison (Recommended)
 
 The recommended scientific workflow uses the `compare_cli` tool with multiple stochastic trials per mode.
-This supports robust statistics and reproducible empirical analysis. Use the correct module and replay directories as below.
+This supports robust statistics and reproducible empirical analysis.
 
-**Example: NASA DDMR-26, 10 Trials, Replay Provider**
+### Using Live LLMs vs. Replay Mode
 
+**By default, we recommend running with your LLM provider (e.g. OpenAI, GPT-4o) for "live" generations:**
+
+**Example: NASA DDMR-26, 10 Trials, OpenAI Provider**
 ```bash
-source .venv/bin/activate
 cd agentic_loop
+source .venv/bin/activate
 PYTHONPATH=src python -m agentic_loop.compare_cli \
   --task tasks/nasa_ddmr26_sample.yaml \
   --tla-jar tla/tla2tools.jar \
@@ -57,17 +61,29 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
   --prompts-dir prompts \
   --prompt-mode one_shot \
   --max-iterations 2 \
-  --provider replay \
-  --replay-dir replay_outputs \
+  --provider openai \
   --model gpt-4o \
   --output-dir results/comparison \
   --num-trials 10
 ```
 
+- This calls the LLM API for each new trial, generating fresh output per run.
+- Use this for new projects, ongoing prompt improvements, or to explore genuine LLM variability.
+
+**For exact reproducibility and debugging:**
+Use replay mode to consume *pre-cached* LLM outputs and avoid API calls:
+```bash
+PYTHONPATH=src python -m agentic_loop.compare_cli \
+  ... \
+  --provider replay \
+  --replay-dir replay_outputs
+```
+- Only use this if you have generated and stored all needed outputs in the `replay_outputs/` directory, with the correct configuration (task, prompt, model, etc.).
+
 #### Key parameters:
 - `--num-trials N` — Number of independent stochastic evaluations per mode (use 10+ for scientific confidence).
 - `--module-dir tla` — Directory with static TLA models and configs.
-- `--replay-dir replay_outputs` — Where replay TLA generation artifacts are stored.
+- `--replay-dir replay_outputs` — Where replay TLA generation artifacts are stored (only needed for replay mode).
 
 #### Output structure:
 
@@ -87,6 +103,10 @@ results/comparison/nasa_ddmr26/
 ```
 Each `metrics.csv` file contains all essential per-trial outcome details (parse/semantic/TLC/repair).
 The aggregate CSV and Markdown files summarize all trials for both modes.
+
+#### **When to use which mode**
+- `--provider openai` (default for most users):  Standard workflow for new analysis and recording new results.
+- `--provider replay`:  For paper reproducibility, audits, or CI, once all generations have been archived to disk.
 
 You may re-run with a different provider (e.g. `--provider openai --model gpt-4o`) or non-default seeds as needed.
 

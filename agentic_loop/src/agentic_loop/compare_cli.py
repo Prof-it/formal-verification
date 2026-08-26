@@ -603,11 +603,19 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
     before_after = []
     if len(case_metrics_list) % 2 != 0:
         print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
+    def _is_tlc_success(entry):
+        # Handle both boolean and string status
+        tlc_val = (entry.get("final_status") or {}).get("tlc", None)
+        if isinstance(tlc_val, bool):
+            return tlc_val
+        status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
+        return (str(status).lower() == "success")
+
     for i in range(0, len(case_metrics_list)-1, 2):
         base = case_metrics_list[i]
         loop = case_metrics_list[i+1]
-        base_tlc = bool((base.get("final_status") or {}).get("tlc", False))
-        loop_tlc = bool((loop.get("final_status") or {}).get("tlc", False))
+        base_tlc = _is_tlc_success(base)
+        loop_tlc = _is_tlc_success(loop)
         before_after.append((base_tlc, loop_tlc))
     counts = Counter(before_after)
     FF = counts[(False, False)]
@@ -694,11 +702,17 @@ def mcnemar_markdown(case_metrics_list, md_path="mcnemar_summary.md"):
     before_after = []
     if len(case_metrics_list) % 2 != 0:
         print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
+    def _is_tlc_success(entry):
+        tlc_val = (entry.get("final_status") or {}).get("tlc", None)
+        if isinstance(tlc_val, bool):
+            return tlc_val
+        status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
+        return (str(status).lower() == "success")
     for i in range(0, len(case_metrics_list)-1, 2):
         base = case_metrics_list[i]
         loop = case_metrics_list[i+1]
-        base_tlc = bool((base.get("final_status") or {}).get("tlc", False))
-        loop_tlc = bool((loop.get("final_status") or {}).get("tlc", False))
+        base_tlc = _is_tlc_success(base)
+        loop_tlc = _is_tlc_success(loop)
         before_after.append((base_tlc, loop_tlc))
     counts = Counter(before_after)
     FF = counts[(False, False)]
@@ -729,11 +743,17 @@ def mcnemar_csv(case_metrics_list, csv_path="mcnemar_summary.csv"):
     before_after = []
     if len(case_metrics_list) % 2 != 0:
         print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
+    def _is_tlc_success(entry):
+        tlc_val = (entry.get("final_status") or {}).get("tlc", None)
+        if isinstance(tlc_val, bool):
+            return tlc_val
+        status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
+        return (str(status).lower() == "success")
     for i in range(0, len(case_metrics_list)-1, 2):
         base = case_metrics_list[i]
         loop = case_metrics_list[i+1]
-        base_tlc = bool((base.get("final_status") or {}).get("tlc", False))
-        loop_tlc = bool((loop.get("final_status") or {}).get("tlc", False))
+        base_tlc = _is_tlc_success(base)
+        loop_tlc = _is_tlc_success(loop)
         before_after.append((base_tlc, loop_tlc))
     counts = Counter(before_after)
     FF = counts[(False, False)]
@@ -935,6 +955,7 @@ def main() -> None:
 
 
         for trial in range(1, num_trials + 1):
+
             # Always output to task/mode/trial_XX, even for num_trials=1, for full reproducibility/aggregation
             # Determine task name for consistent directory naming
             task_id = getattr(task, "name", None) or getattr(args, "task", None) or "default_task"
@@ -951,8 +972,6 @@ def main() -> None:
 
             modules_baseline = baseline_trial_out / "modules"
             copytree_symlink_safe(module_dir, modules_baseline)
-
-
 
             # Baseline mode
             baseline_provider = build_provider(args.provider, args.model, args.replay_dir)
@@ -973,17 +992,18 @@ def main() -> None:
                 mode="baseline",
                 apply_patch=apply_patch,
             )
-
             baseline_json = _load_json(baseline_artifacts["json"])
             baseline_jsons.append(baseline_json)
-
 
             # Write baseline metrics
             _write_trial_metrics_csv(baseline_trial_out / "metrics.csv", baseline_json, trial, "baseline", seed)
 
+            # --- Paired starting spec for loop (NEW: ensure initial spec for loop is the same as baseline) ---
+            baseline_initial_spec = str(baseline_trial_out / "modules" / f"{task.module_name}_attempt_1.tla")
+            if not os.path.isfile(baseline_initial_spec):
+                print(f"[WARN] Baseline initial spec not found: {baseline_initial_spec}")
 
             # Loop mode with regression tracking
-            # Loop -- per-trial input copy
             modules_loop = loop_trial_out / "modules"
             copytree_symlink_safe(module_dir, modules_loop)
             loop_provider = build_provider(args.provider, args.model, args.replay_dir)
@@ -1004,6 +1024,7 @@ def main() -> None:
                 provider=loop_provider,
                 mode="loop",
                 apply_patch=apply_patch,
+                initial_spec_override=baseline_initial_spec,  # <<--- key change: paired initial spec
             )
             loop_json = _load_json(loop_artifacts["json"])
 

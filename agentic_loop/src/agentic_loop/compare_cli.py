@@ -69,6 +69,7 @@ class _MappingCandidate:
     justification: str
 
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run baseline and loop modes on one task and generate a consolidated table"
@@ -144,6 +145,26 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
+
+def _log_event_to_csv(csv_path, trial, event_type, attempt_index, mode, details=None):
+    """
+    Logs repair/regression event to the events CSV file for later analysis.
+    """
+    import csv
+    header = ["trial", "event_type", "attempt_index", "mode", "details"]
+    row = {
+        "trial": trial,
+        "event_type": event_type,
+        "attempt_index": attempt_index,
+        "mode": mode,
+        "details": json.dumps(details) if details is not None else ""
+    }
+    write_header = not csv_path.exists()
+    with open(csv_path, "a", newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
 
 def _load_task_mapping() -> List[Dict[str, Any]]:
     if not TASK_MAPPINGS_PATH.exists():
@@ -562,14 +583,14 @@ def _summarize_case_metrics(case_metrics_list):
     """
     n_total = len(case_metrics_list)
     # Use dicts directly, not json.loads()
-    isr = sum(1 for c in case_metrics_list if (c.get("initial_status") or {}).get("tlc")) / n_total if n_total else 0
-    fsr = sum(1 for c in case_metrics_list if (c.get("final_status") or {}).get("tlc")) / n_total if n_total else 0
+    # isr = sum(1 for c in case_metrics_list if (c.get("initial_status") or {}).get("tlc")) / n_total if n_total else 0
+    # fsr = sum(1 for c in case_metrics_list if (c.get("final_status") or {}).get("tlc")) / n_total if n_total else 0
     failing = [c for c in case_metrics_list if not (c.get("initial_status") or {}).get("tlc")]
     n_failing = len(failing)
-    crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
-    print(f"Initial TLC Success Rate (ISR): {isr:.2%} ({sum(1 for c in case_metrics_list if (c.get('initial_status') or {}).get('tlc'))}/{n_total})")
-    print(f"Final TLC Success Rate (FSR): {fsr:.2%} ({sum(1 for c in case_metrics_list if (c.get('final_status') or {}).get('tlc'))}/{n_total})")
-    print(f"Conditional Repair Success Rate (CRSR): {crsr:.2%} ({sum(1 for c in failing if (c.get('final_status') or {}).get('tlc'))}/{n_failing if n_failing else 1})")
+    # crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
+    # print(f"Initial TLC Success Rate (ISR): {isr:.2%} ({sum(1 for c in case_metrics_list if (c.get('initial_status') or {}).get('tlc'))}/{n_total})")
+    # print(f"Final TLC Success Rate (FSR): {fsr:.2%} ({sum(1 for c in case_metrics_list if (c.get('final_status') or {}).get('tlc'))}/{n_total})")
+    # print(f"Conditional Repair Success Rate (CRSR): {crsr:.2%} ({sum(1 for c in failing if (c.get('final_status') or {}).get('tlc'))}/{n_failing if n_failing else 1})")
     # Failure class repairability table
     fc_table = {}
     for case in failing:
@@ -920,6 +941,9 @@ def main() -> None:
                 loop_jsons.append(json.load(lf))
 
         all_case_metrics = []
+        regressions = []
+        repairs = []
+
         for j in range(len(baseline_jsons)):
             all_case_metrics.append(baseline_jsons[j].get("case_metrics", {}))
             all_case_metrics.append(loop_jsons[j].get("case_metrics", {}))
@@ -973,6 +997,9 @@ def main() -> None:
             loop_trial_out = loop_trials_root / f"trial_{trial:02d}"
             baseline_trial_out.mkdir(parents=True, exist_ok=True)
             loop_trial_out.mkdir(parents=True, exist_ok=True)
+
+            events_csv_path = root_out / "repair_and_regression_events.csv"
+
 
             # Optionally set seed for reproducibility
             seed = (trial_seed_offset + trial) if trial_seed_offset is not None else None
@@ -1038,23 +1065,47 @@ def main() -> None:
             # --- Step 2: Regression tracking ---
             # Track TLC status sequence for this trial
             regression_flag = False
+            regression_attempt_index = None
             tlc_statuses = []
             for attempt in loop_json.get("attempts", []):
                 tlc_statuses.append(attempt.get("status", ""))
             # Regression: TLC success followed by any later non-success
             seen_success = False
-            for status in tlc_statuses:
+            for idx, status in enumerate(tlc_statuses):
                 if status == "success":
                     seen_success = True
                 elif seen_success and status != "success":
                     regression_flag = True
+                    regression_attempt_index = idx + 1  # 1-based for user
+                    print(f"[REGRESSION] Trial {trial}: Regression detected at attempt {regression_attempt_index}. Status sequence: {tlc_statuses}")
+                    _log_event_to_csv(events_csv_path, trial, "regression", regression_attempt_index, "loop", {"tlc_statuses": tlc_statuses})
                     break
             loop_json["regression"] = regression_flag
+
             # Early stop (checkpoint gating) already handled in run_experiment
             loop_jsons.append(loop_json)
 
             # Write loop metrics
             _write_trial_metrics_csv(loop_trial_out / "metrics.csv", loop_json, trial, "loop", seed)
+
+            # --- Step 3: Repair event logging (paired with baseline) ---
+            # Repair: baseline fails, loop succeeds
+            baseline_final_status = baseline_json.get("terminal_status", "")
+            loop_final_status = loop_json.get("terminal_status", "")
+            if (str(baseline_final_status).lower() != "success" and str(loop_final_status).lower() == "success"):
+                # Find first attempt in loop_json where status == 'success'
+                attempts = loop_json.get("attempts", [])
+                repair_attempt_index = None
+                for idx, attempt in enumerate(attempts):
+                    if attempt.get("status", "") == "success":
+                        repair_attempt_index = idx + 1  # 1-based counting
+                        print(f"[REPAIR] Trial {trial}: Repair detected at attempt {repair_attempt_index}.")
+                        _log_event_to_csv(events_csv_path, trial, "repair", repair_attempt_index, "loop", {
+                            "attempt": attempt,
+                            "baseline_terminal_status": baseline_final_status,
+                            "loop_terminal_status": loop_final_status
+                        })
+                        break
 
         # Summarize all trials
         rows = []

@@ -4,6 +4,7 @@ import csv
 import numpy as np
 from pathlib import Path
 from collections import Counter
+import sys
 
 try:
     from statsmodels.stats.contingency_tables import mcnemar
@@ -14,9 +15,17 @@ try:
 except ImportError:
     binom_test = None
 
-SCRIPT_DIR = Path(__file__).resolve().parent.parent.parent
-RESULTS_DIR = SCRIPT_DIR / 'results' / 'nasa_ddmr26' / 'nasa_ddmr26'
-NUM_TRIALS = 100
+
+import argparse
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Analyze agentic loop verification experiments")
+    parser.add_argument('results_root', help="Directory with output folders (baseline, loop, ...)")
+    parser.add_argument('--num-trials', type=int, default=100, help='Number of trials')
+    parser.add_argument('--result-name', default='nasa_ddmr26_run.json', help='Per-trial filename') # In case you want to tweak
+    return parser.parse_args()
+
+
 
 def _write_case_metrics_csv(csv_path, case_metrics_list):
     """Copied from compare_cli.py"""
@@ -35,36 +44,6 @@ def _write_case_metrics_csv(csv_path, case_metrics_list):
                     row[k] = json.dumps(v)
             writer.writerow(row)
 
-def _summarize_case_metrics(case_metrics_list):
-    n_total = len(case_metrics_list)
-    isr = sum(1 for c in case_metrics_list if (c.get("initial_status") or {}).get("tlc")) / n_total if n_total else 0
-    fsr = sum(1 for c in case_metrics_list if (c.get("final_status") or {}).get("tlc")) / n_total if n_total else 0
-    failing = [c for c in case_metrics_list if not (c.get("initial_status") or {}).get("tlc")]
-    n_failing = len(failing)
-    crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
-    print(f"Initial TLC Success Rate (ISR): {isr:.2%} ({sum(1 for c in case_metrics_list if (c.get('initial_status') or {}).get('tlc'))}/{n_total})")
-    print(f"Final TLC Success Rate (FSR): {fsr:.2%} ({sum(1 for c in case_metrics_list if (c.get('final_status') or {}).get('tlc'))}/{n_total})")
-    print(f"Conditional Repair Success Rate (CRSR): {crsr:.2%} ({sum(1 for c in failing if (c.get('final_status') or {}).get('tlc'))}/{n_failing if n_failing else 1})")
-    fc_table = {}
-    for case in failing:
-        fclist = case.get("initial_failure_classes", [])
-        if isinstance(fclist, str):
-            try:
-                fclist = json.loads(fclist)
-            except Exception:
-                fclist = []
-        for fc in fclist:
-            if fc not in fc_table:
-                fc_table[fc] = {"total": 0, "repaired": 0}
-            fc_table[fc]["total"] += 1
-            if (case.get("final_status") or {}).get("tlc"):
-                fc_table[fc]["repaired"] += 1
-    print("\n| Failure class | Cases | Repaired | Repairability |")
-    print("|--------------|-------|----------|--------------|")
-    for fc, val in sorted(fc_table.items()):
-        total = val["total"]
-        repaired = val["repaired"]
-        print(f"| {fc} | {total} | {repaired} | {repaired/total:.1%} |")
 
 def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
     before_after = []
@@ -269,29 +248,36 @@ def summarize_case_metrics_per_mode(baseline_cases, loop_cases):
     failure_class_table(loop_cases, "loop")
 
 def main():
-    print(f"Looking for results in: {RESULTS_DIR}")
+    args = parse_args()
+    results_root = args.results_root
+    NUM_TRIALS = args.num_trials
+    result_name = args.result_name
+    print(f"Analyzing results in {results_root}, num_trials = {NUM_TRIALS}")
 
     baseline_jsons = []
     loop_jsons = []
     baseline_cases = []
     loop_cases = []
     all_case_metrics = []
+    trial_pairs = []      # List of (trial_idx, baseline_case, loop_case)
+
     for i in range(1, NUM_TRIALS+1):
-        base_path = RESULTS_DIR / "baseline" / f"trial_{i:02d}" / "nasa_ddmr26_run.json"
-        loop_path = RESULTS_DIR / "loop" / f"trial_{i:02d}" / "nasa_ddmr26_run.json"
+        base_path = Path(results_root) / "baseline" / f"trial_{i:02d}" / result_name
+        loop_path = Path(results_root) / "loop" / f"trial_{i:02d}" / result_name
         if not (base_path.exists() and loop_path.exists()):
             print(f"[WARN] Missing trial {i:02d}: {base_path} {loop_path}")
             continue
         with open(base_path, "r") as f:
             b = json.load(f)
-            baseline_jsons.append(b)
         with open(loop_path, "r") as f:
             l = json.load(f)
-            loop_jsons.append(l)
 
-        # Build entries as compare_cli.py does
+        # Build entries as compare_cli.py
         b_case_metrics = b.get("case_metrics", {})
         l_case_metrics = l.get("case_metrics", {})
+
+        baseline_jsons.append(b)   
+        loop_jsons.append(l)       
 
         entry_b = {
             "mode": "baseline",
@@ -313,8 +299,7 @@ def main():
             )},
             "initial_failure_classes": l_case_metrics.get("initial_failure_classes", [])
         }
-        baseline_cases.append(entry_b)
-        loop_cases.append(entry_l)
+        trial_pairs.append((i, entry_b, entry_l))
 
         # Full per-case-metrics, for csv etc.
         if b_case_metrics:
@@ -326,17 +311,47 @@ def main():
             row["mode"] = "loop"
             all_case_metrics.append(row)
 
-    # Write case metrics CSV
-    csv_path = RESULTS_DIR / "case_metrics.csv"
+    # Now—reliably paired
+    paired_case_metrics = []
+    baseline_cases = []
+    loop_cases = []
+    for trial_idx, b_entry, l_entry in trial_pairs:
+        paired_case_metrics.append(b_entry)
+        paired_case_metrics.append(l_entry)
+        baseline_cases.append(b_entry)
+        loop_cases.append(l_entry)
+
+
+
+    # Write case metrics CSV as before
+    csv_path = Path(results_root) / "case_metrics.csv"
     _write_case_metrics_csv(csv_path, all_case_metrics)
     print(f"\nWrote detailed case metrics CSV: {csv_path}")
 
-    # Print summary, mcnemar, markdown, CSV etc
-    _summarize_case_metrics(all_case_metrics)
-    mcnemar_analysis(all_case_metrics, summary_path=str(RESULTS_DIR / "mcnemar_summary.txt"))
-    mcnemar_markdown(all_case_metrics, md_path=str(RESULTS_DIR / "mcnemar_summary.md"))
-    mcnemar_csv(all_case_metrics, csv_path=str(RESULTS_DIR / "mcnemar_summary.csv"))
+    # -- STRICT PAIRED LOGIC: Interleave baseline/loop entries for each trial --
+    paired_case_metrics = []
+    for i in range(len(baseline_cases)):
+        b_entry = baseline_cases[i]
+        l_entry = loop_cases[i]
+        paired_case_metrics.append(b_entry)
+        paired_case_metrics.append(l_entry)
+        # For debugging, print TRUE regressions
+        def _is_tlc_success(entry):
+            tlc_val = (entry.get("final_status") or {}).get("tlc", None)
+            if isinstance(tlc_val, bool):
+                return tlc_val
+            status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
+            return (str(status).lower() == "success")
+        if _is_tlc_success(b_entry) and not _is_tlc_success(l_entry):
+            print(f"REGRESSION: trial {i+1:02d} baseline=success, loop={l_entry.get('final_status')}")
 
+
+    # Use paired_case_metrics for all outcome analysis! (now matches compare_cli.py logic)
+    mcnemar_analysis(paired_case_metrics, summary_path=str(Path(results_root) / "mcnemar_summary.txt"))
+    mcnemar_markdown(paired_case_metrics, md_path=str(Path(results_root) / "mcnemar_summary.md"))
+    mcnemar_csv(paired_case_metrics, csv_path=str(Path(results_root) / "mcnemar_summary.csv"))
+
+    # For per-mode stats, keep using baseline_cases and loop_cases
     summarize_case_metrics_per_mode(baseline_cases, loop_cases)
 
     # Timing stats

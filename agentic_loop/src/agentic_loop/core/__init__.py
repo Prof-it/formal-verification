@@ -1,0 +1,1 @@
+"""Core logic for agentic_loop (argument parsing, module staging, copy helpers, etc.)"""

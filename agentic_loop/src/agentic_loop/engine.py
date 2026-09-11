@@ -20,395 +20,48 @@ import numpy as np
 import logging
 
 from .stats_utils import PurgeStats
-from .io_utils import save_tlc_log, load_skills
+from .utils import print_source_with_line_numbers, is_multi_operator_issue
+from .io_utils import (
+    save_tlc_log, 
+    write_violation_report,
+    load_skills, 
+    _coerce_module_dir,
+    _resolve_task_artifact,
+    validate_module_layout,
+    _write_module,
+    generate_cfg_for_tla,
+    generate_cfg_via_llm,
+    get_failure_classes_from_attempt
+    )
 from .tlc_error_utils import classify_tlc_error
-from .trace_utils import parse_tlc_trace, tlc_trace_to_markdown_table
-
-
-
-
-def write_violation_report(report_path, attempt_id, violated_inv, tla_inv_code, nl_req, trace, trace_lines, skill, tlc_log_path, llm_explanation=None, llm_plan=None):
-    Path(report_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(f"# TLC Error/Violation Report\n\n")
-        f.write(f"**Attempt:** {attempt_id}\n\n")
-        f.write(f"**Detected Error Type (Skill):** `{skill['key']}`\n")
-        f.write(f"**Skill Strategy:** {skill['strategy']}\n\n")
-        f.write("## TLC Log File\n")
-        f.write(f"[Full TLC log for this attempt]({tlc_log_path})\n\n")
-        if violated_inv:
-            f.write(f"**Violated Invariant:** `{violated_inv}`\n\n")
-        f.write("## Invariant Definition\n")
-        f.write(f"```tla\n{tla_inv_code}\n```\n")
-        f.write("## Original Natural Language Requirement\n")
-        f.write(f"{nl_req}\n\n")
-        if trace_lines:
-            f.write("## TLC Violation Trace (Markdown Table)\n")
-            f.write(tlc_trace_to_markdown_table(trace_lines) + "\n\n")
-        if trace:
-            f.write("## TLC Raw Trace\n")
-            f.write("```\n" + trace + "\n```\n")
-        if llm_explanation:
-            f.write("## LLM Explanation/Diagnosis\n")
-            f.write(llm_explanation + "\n\n")
-        if llm_plan:
-            f.write("## LLM-Generated Repair Plan\n")
-            f.write(llm_plan + "\n\n")
-
-def extract_invariant_code(spec_text, inv_name):
-    matches = re.findall(rf"^{inv_name}\s*==[^\n]*(((\n[ \t]+[^=\n]+)+)?)+", spec_text, re.MULTILINE)
-    if matches:
-        return inv_name + " ==" + matches[0][0]
-    return "[definition not found]"
-
-
-def _coerce_module_dir(module_dir: Path | str) -> Path:
-    if isinstance(module_dir, tuple):
-        raise TypeError(
-            "LoopConfig.module_dir must be path-like; tuple payloads are no longer supported."
-        )
-    try:
-        resolved = Path(module_dir).expanduser().resolve()
-    except TypeError as exc:
-        raise TypeError("LoopConfig.module_dir must be path-like") from exc
-    if not resolved.exists():
-        raise FileNotFoundError(f"Module directory '{resolved}' not found.")
-    if not resolved.is_dir():
-        raise NotADirectoryError(f"Module directory '{resolved}' is not a directory.")
-    return resolved
-
-
-def _resolve_task_artifact(module_dir: Path, artifact: str) -> Path:
-    artifact_path = Path(artifact)
-    if artifact_path.is_absolute():
-        return artifact_path
-
-    direct = module_dir / artifact_path
-    if direct.exists():
-        return direct
-
-    if artifact_path.parts and artifact_path.parts[0] == module_dir.name:
-        stripped = Path(*artifact_path.parts[1:]) if len(artifact_path.parts) > 1 else Path()
-        candidate = module_dir / stripped
-        if candidate.exists():
-            return candidate
-
-    parent_candidate = module_dir.parent / artifact_path
-    if parent_candidate.exists():
-        return parent_candidate
-
-    matches = [hit for hit in module_dir.rglob(artifact_path.name) if hit.as_posix().endswith(artifact_path.as_posix())]
-    if matches:
-        return matches[0]
-
-    raise FileNotFoundError(
-        f"Unable to locate artifact '{artifact}' relative to module directory '{module_dir}'."
-    )
-
-
-def validate_module_layout(task: TaskSpec, module_dir: Path | str) -> None:
-    root = _coerce_module_dir(module_dir)
-
-    # Always copy the bootstrap .cfg template to the destination
-    bootstrap_cfg_template = Path(__file__).resolve().parent.parent / "default_bootstrap/BootstrapModule.cfg"
-    cfg_target = root / task.cfg_file
-    cfg_target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(bootstrap_cfg_template, cfg_target)
-    logging.info(f"[Bootstrap] Copied .cfg config from template at {cfg_target}")
-
-    # Always copy the bootstrap .tla template, with MODULE header rewritten
-    bootstrap_tla_template = Path(__file__).resolve().parent.parent / "default_bootstrap/BootstrapModule.tla"
-    tla_target = root / f"{task.module_name}.tla"
-    with open(bootstrap_tla_template, "r", encoding="utf-8") as src:
-        content = src.read()
-
-    content = re.sub(
-        r"---- MODULE .* ----",
-        f"---- MODULE {task.module_name} ----",
-        content,
-        count=1
-    )
-    content = ("\\* AUTOGENERATED FROM BootstrapModule.tla. Replace or edit as needed.\n" + content)
-    with open(tla_target, "w", encoding="utf-8") as f:
-        f.write(content)
-    logging.info(f"[Bootstrap] Copied TLA+ module from template at {tla_target}")
-
-    # (Optional) Manifest file check
-    manifest = root / "manifest.json"
-    if not manifest.exists():
-        logging.warning(
-            f"Optional manifest.json not found in module directory '{root}'."
-        )
-
-
-def _write_module(module_dir: Path | str, module_name: str, spec_text: str, attempt_id: int) -> Path:
-    """Ensure MODULE header matches snapshot filename."""
-    module_dir = Path(module_dir)
-    snapshot_name = f"{module_name}_attempt_{attempt_id}"
-    snapshot_path = module_dir / f"{snapshot_name}.tla"
-    lines = spec_text.strip().splitlines()
-    if lines:
-        lines[0] = f"---- MODULE {snapshot_name} ----"
-    fixed_body = "\n".join(lines)
-    # Save to latest main (optional, for backwards compat)
-    target = module_dir / f"{module_name}.tla"
-    target.write_text(fixed_body + "\n", encoding="utf-8")
-    # Save to snapshot with correct header
-    snapshot_path.write_text(fixed_body + "\n", encoding="utf-8")
-    logging.info(
-        f"[ModuleWrite] attempt={attempt_id} target={target} snapshot={snapshot_path}"
-    )
-    return snapshot_path
-
-
-_QUANTIFIER_BOUND_PATTERN = re.compile(
-    r"(\\[AE])(\s+)([A-Za-z_][A-Za-z0-9_]*)(\s+)\\subseteq(\s+)([^:\n\]]+?)(\s*)(?=\s*[:\]])",
-    re.MULTILINE,
+from .trace_utils import parse_tlc_trace
+from .llm_error_analysis import llm_analyze_tlc_error
+from .repair_utils import (
+    is_multi_operator_issue,
+    clear_skill_attempt_session,
+    get_recursively_defined_functions,
+    try_register_candidate_rule, 
+    apply_known_skill
+)
+from .llm_policy_utils import first_undefined_operator
+from .user_approval_utils import prompt_human_for_skill_approval
+from .utils.hard_tla_patch import (
+    fix_double_prime_vars,
+    sanitize_quantifier_bounds,
+    ensure_invariants,
+    remove_invariants_if_undefined,
+    patch_cfg_with_constants,
+    normalize_recursive_operators,
+    extract_invariants_from_tla,
+    extract_invariant_code,
 )
 
-
-def sanitize_quantifier_bounds(spec_text: str) -> str:
-    """Rewrite quantifier bounds that use ``\\subseteq`` into TLC-compatible ``\\in SUBSET`` forms."""
-
-    replacements = 0
-
-    def _replacement(match: re.Match[str]) -> str:
-        nonlocal replacements
-        replacements += 1
-        quant, ws_quant_var, var, ws_after_var, _, domain, trailing_ws = (
-            match.group(1),
-            match.group(2),
-            match.group(3),
-            match.group(4),
-            match.group(5),
-            match.group(6),
-            match.group(7),
-        )
-        coerced_domain = domain.strip()
-        if coerced_domain.startswith("SUBSET"):
-            replacement_domain = coerced_domain
-        else:
-            replacement_domain = f"SUBSET ({coerced_domain})"
-        return f"{quant}{ws_quant_var}{var}{ws_after_var}\\in {replacement_domain}{trailing_ws}"
-
-    sanitized = _QUANTIFIER_BOUND_PATTERN.sub(_replacement, spec_text)
-    if replacements:
-        logging.info(f"[Sanitizer] Rewrote {replacements} quantifier bound(s) to use SUBSET membership.")
-    return sanitized
+MAX_SUGGESTIONS = 2
 
 
-def purge_temp_modules(task_name: str, module_root: Path | str) -> PurgeStats:
-    """Remove staged module directories for a task under ``module_root`` and report reclaimed space."""
-
-    root = Path(module_root).expanduser().resolve()
-    if not root.exists() or not root.is_dir():
-        return PurgeStats()
-
-    prefix = f"{task_name}_"
-    removed = 0
-    reclaimed_bytes = 0
-
-    for candidate in list(root.iterdir()):
-        if not candidate.is_dir() or not candidate.name.startswith(prefix):
-            continue
-        try:
-            for file_path in candidate.rglob("*"):
-                if file_path.is_file():
-                    try:
-                        reclaimed_bytes += file_path.stat().st_size
-                    except OSError:
-                        continue
-            shutil.rmtree(candidate, ignore_errors=False)
-            removed += 1
-        except Exception as exc:
-            logging.warning(
-                f"Failed to purge staged module directory '{candidate}': {exc}",
-                RuntimeWarning,
-            )
-    stats = PurgeStats(removed_directories=removed, reclaimed_bytes=reclaimed_bytes)
-    if removed:
-        logging.info(f"[ModuleCleanup] {stats.as_log_message()}")
-    return stats
-
-
-# --- Utility: Generate config file from TLA+ module and bootstrap config ---
-def generate_cfg_for_tla(tla_path, bootstrap_cfg_path, out_cfg_path):
-    with open(tla_path, encoding="utf-8") as f:
-        tla_lines = f.readlines()
-
-    constants_declared = set()
-    for line in tla_lines:
-        mconst = re.match(r"\s*CONSTANTS?\s+([a-zA-Z_][a-zA-Z0-9_, ]*)", line)
-        if mconst:
-            names = [x.strip() for x in mconst.group(1).split(",")]
-            constants_declared.update(names)
-
-    invariant_names = extract_invariants_from_tla(tla_lines)
-
-    init_name, next_name = None, None
-    for line in tla_lines:
-        m = re.match(r"\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*==", line)
-        if m:
-            opname_l = m.group(1).lower()
-            if opname_l == "init":
-                init_name = m.group(1)
-            elif opname_l == "next":
-                next_name = m.group(1)
-
-    with open(bootstrap_cfg_path, encoding="utf-8") as f:
-        cfg_in = f.readlines()
-    output_lines = []
-    for l in cfg_in:
-        if "INIT <InitPredicateName>" in l and init_name:
-            output_lines.append(f"INIT {init_name}\n")
-        elif "NEXT <NextPredicateName>" in l and next_name:
-            output_lines.append(f"NEXT {next_name}\n")
-        elif "INVARIANT <TypeOK or something>" in l:
-            if "TypeOK" in invariant_names:
-                output_lines.append("INVARIANT TypeOK\n")
-        elif re.match(r"\s*INVARIANTS?", l, re.IGNORECASE):
-            if invariant_names:
-                output_lines.append("INVARIANTS\n")
-                for inv in invariant_names:
-                    output_lines.append(f"    {inv}\n")
-        elif l.strip().startswith("CONSTANT") or l.strip().startswith("CONSTANTS"):
-            if constants_declared:
-                output_lines.append("CONSTANT " + ", ".join(constants_declared) + "\n")
-        elif l.strip() == "CONSTANT":
-            if constants_declared:
-                output_lines.append("CONSTANT " + ", ".join(constants_declared) + "\n")
-        else:
-            if l.strip() != "" and not l.strip().startswith("*"):
-                output_lines.append(l)
-    with open(out_cfg_path, "w", encoding="utf-8") as f:
-        for l in output_lines:
-            f.write(l)
-    return out_cfg_path
-
-
-
-
-
-# AUTO-STUB: Ensure all invariants from config are present in the spec
-def ensure_invariants(spec_text: str, cfg_path: str) -> str:
-    invariants = set()
-    with open(cfg_path, encoding="utf-8") as f:
-        for line in f:
-            m = re.match(r'\s*INVARIANT\s+([a-zA-Z_][a-zA-Z0-9_]*)', line)
-            if m:
-                invariants.add(m.group(1))
-    defined = set()
-    for line in spec_text.splitlines():
-        m = re.match(r'\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*==', line)
-        if m:
-            defined.add(m.group(1))
-    missing = invariants - defined
-    if missing:
-        logging.info(f"[Auto-Stub] Adding stubs for missing invariants: {missing}")
-        stubs = [f"{name} == TRUE" for name in sorted(missing)]
-        return spec_text.strip() + "\n" + "\n".join(stubs) + "\n"
-    else:
-        return spec_text
     
-# Compute case_metrics as before
-def get_failure_classes_from_attempt(attempt):
-    key = None
-    output = getattr(attempt, "feedback_excerpt", None) or getattr(attempt, "status", None)
-    if output:
-        try:
-            skills_db = load_skills("skills.json")
-            key = classify_tlc_error(str(output), skills_db).get("key", "unknown")
-        except Exception:
-            key = "unknown"
-    # Always surface unknown key now
-    return [key] if key else []
 
 
-# Auto-patch .cfg for missing CONSTANT assignments
-def patch_cfg_with_constants(spec_text: str, cfg_path: str, attempt_id: str) -> str:
-    declared_constants = set()
-    for line in spec_text.splitlines():
-        mconst = re.match(r'\s*CONSTANTS?\s+([A-Za-z_][A-Za-z0-9_, ]*)', line)
-        if mconst:
-            names = [x.strip() for x in mconst.group(1).split(",")]
-            declared_constants.update(names)
-    with open(cfg_path, encoding="utf-8") as f:
-        cfg_lines = f.read().splitlines()
-    assigned_constants = set()
-    for line in cfg_lines:
-        m = re.match(r'\s*CONSTANT\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=.*', line)
-        if m:
-            assigned_constants.add(m.group(1))
-    missing = declared_constants - assigned_constants
-    if missing:
-        logging.info(f"[Auto-Config] Adding default assignments in .cfg for: {missing}")
-        new_lines = [f"CONSTANT {const} = 3" for const in sorted(missing)]
-        base = Path(cfg_path)
-        temp_cfg_path = str(base.parent / (base.stem + f".autofill_{attempt_id}.cfg"))
-        with open(temp_cfg_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(cfg_lines + new_lines) + "\n")
-        return temp_cfg_path
-    else:
-        return cfg_path
-
-def extract_invariants_from_tla(tla_lines):
-    result = []
-    opname, body_lines = None, []
-    for line in tla_lines + [""]:
-        m = re.match(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*==', line)
-        if m:
-            # flush previously captured operator
-            if opname and opname.upper() not in {"INIT", "NEXT", "SPEC"} and body_lines:
-                body = "\n".join(body_lines).strip()
-                if not re.search(r"\w+'", body):
-                    result.append(opname)
-            opname = m.group(1)
-            body_lines = []
-        elif opname:
-            body_lines.append(line)
-    if opname and opname.upper() not in {"INIT", "NEXT", "SPEC"} and body_lines:
-        body = "\n".join(body_lines).strip()
-        if not re.search(r"\w+'", body):
-            result.append(opname)
-    return result
-
-def generate_cfg_via_llm(module_snapshot, task, provider, attempt_id, prompts_dir, cfg_generation_template=None):
-    """
-    Generates a TLC .cfg file by prompting the LLM directly,
-    instead of using the standard patch/process logic.
-    """
-    # Compose the input prompt for the LLM
-    prompt_template = cfg_generation_template if cfg_generation_template is not None else load_prompt_template(prompts_dir, "cfg_generation")
-    with open(module_snapshot, "r", encoding="utf-8") as f:
-        tla_contents = f.read()
-    llm_prompt = render_prompt(
-        prompt_template,
-        {
-            "tla_module": tla_contents,
-            "task_name": task.name,
-            "task_requirements": task.requirement_text,
-            "example_config": "",
-        }
-    )
-    # Ask LLM to generate .cfg
-    llm_response = provider.generate(llm_prompt, {"attempt_id": str(attempt_id), "phase": "generate_cfg"})
-    # Write result to cfg file
-    out_cfg_path = module_snapshot.with_suffix(".llm.cfg")
-    with open(out_cfg_path, "w", encoding="utf-8") as f:
-        f.write(llm_response)
-    logging.info(f"[LLM-CFG] Wrote LLM-generated TLC config to {out_cfg_path}")
-    return str(out_cfg_path)
-
-
-def remove_invariants_if_undefined(spec_text: str, cfg_path: str) -> None:
-    # Defensive cleanup: Always remove literal dummy invariants lines
-    with open(cfg_path, encoding="utf-8") as f:
-        cfg_text = f.read()
-    new_cfg = re.sub(r"^\\s*INVARIANTS?\\s+invariants\\b.*(?:\\n)?", "", cfg_text, flags=re.MULTILINE | re.IGNORECASE)
-    if cfg_text != new_cfg:
-        with open(cfg_path, "w", encoding="utf-8") as f:
-            f.write(new_cfg)
-        logging.info(f"[Patcher] Cleaned dummy 'invariants' entry from {cfg_path}")
 
 def run_experiment(
     task: TaskSpec,
@@ -471,6 +124,8 @@ def run_experiment(
         terminal_status="unknown",
         learning_step_index=learning_step_index,
     )
+    # --- PATCH: clear skill/session tracking for this repair session ---
+    clear_skill_attempt_session()
 
     max_iterations = 1 if mode == "baseline" else config.max_iterations
     latest_spec = ""
@@ -483,7 +138,7 @@ def run_experiment(
     applied_skill_keys: list[str] = []
     successful_skill_uses = 0
     human_intervention_flag = False
-
+    pending_session_rule = None
 
     for attempt_id in range(1, max_iterations + 1):
         phase = "generate" if attempt_id == 1 else "repair"
@@ -595,6 +250,9 @@ def run_experiment(
             excerpt = "\n".join(error_lines)
         else:
             excerpt = "\n".join(lines[:8])
+
+        logging.info(f"[TLC Error] Attempt {attempt_id}: TLC error lines (up to 10):\n" + "\n".join(error_lines[:10]))
+
         attempt_record = AttemptRecord(
             attempt_id=attempt_id,
             phase=phase,
@@ -634,9 +292,102 @@ def run_experiment(
         # --- Skill classification ---
         skills_db = load_skills("skills.json")
         skill = classify_tlc_error(tlc.output, skills_db)
+        logging.info(f"[Skill Match] Attempt {attempt_id}: Error classified as key '{skill['key']}', strategy: '{skill['strategy']}'")
+
+
+        #Loop for LLM/human-in-the-loop rule suggestion until accepted
+
+
+        diagnosis_context = ""
+        suggestion_count = 0
+
+
+        # Guarantee: Skill (rule) application is only possible with explicit user approval. No auto-accept is permitted.
+        # (Any auto-approve logic has been removed to guarantee the user always sees and approves new skills.)
+
+        # Save original skill for checking post-loop
+        original_skill = skill
+
+        # Loop to propose/approve/apply new rule suggestion if unknown
+        # Only analyze and prompt for unknown skills
+        if skill["key"] == "unknown":
+            diagnosis_context = ""
+            suggestion_count = 0
+            while skill["key"] == "unknown" and suggestion_count < MAX_SUGGESTIONS:
+                matches = re.findall(r"Unknown operator: `([^`]+)`", tlc.output)
+                first_undefined = matches[0] if matches else None
+                first_undef_statement = f"First undefined operator to address: {first_undefined}" if first_undefined else ""
+                first_undefined = first_undefined_operator(tlc.output)
+                first_undef_statement = f"First undefined operator to address: {first_undefined}" if first_undefined else ""
+                diagnosis = llm_analyze_tlc_error(
+                    provider,
+                    task,
+                    latest_spec,
+                    tlc.output + diagnosis_context + "\n" + first_undef_statement
+                )
+                repair_skill_text = diagnosis.get('repair_skill', "") or ""
+                candidate_rule = diagnosis.get('new_rule')
+
+                print(f"\n--- UNKNOWN TLC ERROR ---")
+                print(tlc.output)
+                print(f"\n--- CURRENT MODULE ---")
+                print_source_with_line_numbers(module_snapshot_str)
+                print(f"\n--- LLM ANALYSIS ---\n{diagnosis.get('diagnosis')}")
+                print(f"\n--- PROPOSED REPAIR ---")
+                # Show the repair plan as empty if not provided
+                if repair_skill_text:
+                    print(repair_skill_text)
+                else:
+                    print("No proposal from LLM.")
+
+                modular_issue = is_multi_operator_issue(candidate_rule, repair_skill_text)
+                decision, suggestion_count, diagnosis_context_update = prompt_human_for_skill_approval(
+                    candidate_rule, repair_skill_text,
+                    modular_issue=modular_issue,
+                    suggestion_count=suggestion_count
+                )
+                if decision == 'pass':
+                    if candidate_rule:
+                        if 'key' not in candidate_rule:
+                            candidate_rule['key'] = (
+                                candidate_rule.get('pattern') or
+                                candidate_rule.get('suggested_skill') or
+                                f"unnamed_{abs(hash(json.dumps(candidate_rule)))}"
+                            )
+                        success, pending_session_rule = try_register_candidate_rule(candidate_rule, skills_db, pending_session_rule)
+                        if not success:
+                            break
+                        skill = classify_tlc_error(tlc.output, skills_db)
+                        logging.info(f"[Skill Match] Attempt {attempt_id}: Error classified as key '{skill['key']}', strategy: '{skill['strategy']}'")
+                        break
+                    else:
+                        break
+                elif decision == 'continue':
+                    diagnosis_context += diagnosis_context_update
+                    suggestion_count += 1
+                    continue
+                elif decision == 'break':
+                    break
+
+                   
+
         if skill["key"] != "unknown":
+            logging.info(f"[Skill Patch] Attempt {attempt_id}: Applying skill '{skill['key']}' with strategy '{skill['strategy']}'")
+
             attempt_record.skills_applied.append(skill["key"])
             applied_skill_keys.append(skill["key"])
+
+            # →→ NEW: Actually apply the strategy to the spec! ←←
+            # (pseudo-code, you need to implement apply_known_skill)
+            logging.debug("[Skill Patch] Before patch:\n" + latest_spec)
+            new_spec = apply_known_skill(latest_spec, skill)
+            logging.debug("[Skill Patch] After patch:\n" + new_spec)
+            # Update the spec for next TLC attempt
+            latest_spec = new_spec
+            # Write out the spec, same as you do after LLM edits
+            module_snapshot = _write_module(module_dir, task.module_name, latest_spec, attempt_id)
+            module_snapshot_str = str(module_snapshot)
+
 
         # Attempt final time
         attempt_timing["end_attempt"] = time.time()
@@ -750,6 +501,21 @@ def run_experiment(
     result.skills_applied = applied_skill_keys
     result.skills_successful = successful_skill_uses
     result.human_intervention = human_intervention_flag
+
+    # Patch: Persist rule only if repair was actually successful!
+    # Patch: Persist rule immediately upon approval (not just on TLC success)
+    if pending_session_rule:
+        SKILLS_DB_FILE = "skills.json"
+        file_db = load_skills(SKILLS_DB_FILE)
+        found = any(r.get('key') == pending_session_rule['key'] for r in file_db)
+        if not found:
+            file_db.append(pending_session_rule)
+            with open(SKILLS_DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(file_db, f, indent=2)
+            print(f"\n[Rule Persisted] New rule '{pending_session_rule.get('key', '')}' added to skills DB.")
+        else:
+            print("\n[Avoided duplicate - rule already present in DB.]\n")
+
 
     result.metadata = {
         "module_dir": str(module_dir),

@@ -2,21 +2,55 @@
   {
     "key": "missing_next_state_assignment",
     "pattern": "Error: Successor state is not completely specified.*not defined: (?P<vars>.*)",
-    "strategy": "Add or fix next-state assignments for all listed variables in every action."
+    "strategy": "Assign all next-state vars.",
+    "suggested_skill": "Add or correct next-state assignments for all listed variables in every action block (e.g., x' = ... for each missing variable)."
   },
   {
     "key": "invariant_violation",
     "pattern": "Invariant (\\w+) is violated",
-    "strategy": "Analyze the counterexample trace to locate the violation, and repair the invariant or corresponding spec logic."
+    "strategy": "Inspect and repair violated invariant.",
+    "suggested_skill": "Analyze the TLC violation trace to identify why the invariant was violated. Repair the invariant or the model logic so it matches the intended property. Check related state transitions or type invariant definitions as needed."
   },
   {
     "key": "python_command_requires_venv",
     "pattern": "(?i)^(python(3)?|pip(3)?|pytest)(\\s|$)",
-    "strategy": "Prefix the command with 'source agentic_loop/.venv/bin/activate &&' so execution occurs within the project virtual environment."
+    "strategy": "Run commands in the venv.",
+    "suggested_skill": "Prefix the shell command with 'source agentic_loop/.venv/bin/activate &&' to ensure it runs within the correct Python virtual environment. For example: 'source agentic_loop/.venv/bin/activate && python your_script.py'."
   },
   {
     "key": "cfg_spec_mismatch",
     "pattern": "constant parameter .* not assigned a value|INI(T|TIAL) is not defined|NEXT is not defined|Error:.*invariant.*not (defined|declared)|Error:.*is not a predicate|is not an operator declared in module",
-    "strategy": "Check that .cfg and .tla interface match."
+    "strategy": "Sync .cfg and .tla.",
+    "suggested_skill": "Ensure the .cfg file matches the operators, predicates, constants, and invariants declared in the TLA+ module. Assign values for all CONSTANTS, and make sure all referenced INIT, NEXT, and invariant predicates exist in the TLA+ code with correct names."
+  },
+  {
+    "pattern": "Lexical error at line \\d+, column \\d+\\.  Encountered: \"`\" \\(96\\), after : \"\"",
+    "key": "Lexical error at line \\d+, column \\d+\\.  Encountered: \"`\" \\(96\\), after : \"\"",
+    "strategy": "Remove stray ` characters.",
+    "suggested_skill": "Remove stray backtick (`) characters from the source code at the indicated location."
+  },
+  {
+    "pattern": "Unknown operator: `Subset`",
+    "key": "Unknown operator: `Subset`",
+    "strategy": "Use SUBSET for powersets.",
+    "suggested_skill": "Replace all appearances of 'Subset(p)' with 'SUBSET p'. The 'SUBSET' keyword is the standard TLA+ operator to return the power set of a set. For example, change: 'Subset(p)' to 'SUBSET p'. Also, revise related expressions, e.g.\n\nOld:\n  WeightSet(p) == {Sum(S) : S \\in Subset(p)}\nNew:\n  WeightSet(p) == {Sum(S) : S \\in SUBSET p}"
+  },
+  {
+    "pattern": "Encountered \"<EOF>\" at line \\d+, column \\d+ and token \"\\)\"",
+    "key": "Encountered \"<EOF>\" at line \\d+, column \\d+ and token \"\\)\"",
+    "strategy": "Add '====' end module.",
+    "suggested_skill": "Ensure the TLA+ module ends with '====' to properly terminate the module body. Add this line at the end if missing."
+  },
+  {
+    "pattern": "Unknown operator: [`']?([A-Za-z_][A-Za-z0-9_]*)[`']?",
+    "key": "Unknown operator: `GENERIC_FN`",
+    "strategy": "Define missing recursive function as bracket-domain.",
+    "suggested_skill": "If '{fn}' is intended as a recursive function over sets or sequences, define it using the domain bracket notation, not as an operator. Example patterns:\n\nFor sequences:\n  {fn}[seq \\in Seq(Int)] == IF seq = <<>> THEN 0 ELSE Head(seq) + {fn}[Tail(seq)]\n\nFor sets:\n  {fn}[S \\in SUBSET Int] == IF S = {} THEN 0 ELSE LET x == CHOOSE y \\in S: TRUE IN x + {fn}[S \\ {x}]\n\nReplace all calls of '{fn}(...)' in your code with '{fn}[...]'. Ensure all usages and definitions are aligned with this style. No RECURSIVE needed for function-definition style."
+  },
+  {
+    "pattern": "Encountered \"<EOF>\" at line \\d+, column \\d+ and token \">>\"",
+    "key": "missing_module_delimiter",
+    "strategy": "Add the missing '====' delimiter at the end of the module.",
+    "suggested_skill": "Ensure that the TLA+ module ends with the '====' delimiter. Add '====' at the end of the file to properly close the module."
   }
 ]

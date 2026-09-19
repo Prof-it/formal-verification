@@ -180,3 +180,21 @@ The NASA task YAML (`tasks/nasa_ddmr26_sample.yaml`) is evaluated against invari
 ## Metric Instrumentation
 
 Automated runs persist the evaluation metrics enumerated in [`verifier_in_the_loop.tex`](agentic_loop/verifier_in_the_loop.tex:105). [`persist_run_result`](agentic_loop/src/agentic_loop/reporting.py:15) emits JSON fields for generation and verification success, counterexample statistics, skill usage traces, learning step indices, and human intervention flags. [`compare_cli`](agentic_loop/src/agentic_loop/compare_cli.py:37) consumes these values when producing CSV/Markdown summaries and can optionally aggregate learning efficiency across runs via `--learning-series` inputs.
+
+## 📚 Publication
+
+This repository accompanies the following research contribution:
+
+- **Lu, T. (2026).** *Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26.* IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM), Paris, France, 26–27 October 2026. Camera-ready.
+
+```bibtex
+@inproceedings{lu2026verifier,
+  author    = {Lu, Tianxiang},
+  title     = {Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26},
+  booktitle = {IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)},
+  year      = {2026},
+  address   = {Paris, France},
+  month     = oct,
+  note      = {Camera-ready; conference scheduled for 26--27 October 2026}
+}
+```

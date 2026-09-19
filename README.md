@@ -305,3 +305,20 @@ git clone https://github.com/yourusername/formal-verification.git
 This software is licensed for NON-COMMERCIAL use only. For commercial use, please contact prof.dr.rer.nat.lu@gmail.com.
 
 For more details, see the LICENSE file.
+
+## 📚 Publication
+
+This repository accompanies the following research contribution:
+
+- **Lu, T. (2026).** *Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing.* Technologie und Organisation. Springer Gabler, 2026. [Camera-ready](https://link.springer.com/book/9783658515102)
+
+```bibtex
+@book{lu2026formal,
+  author    = {Lu, Tianxiang},
+  title     = {Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing},
+  series    = {Technologie und Organisation},
+  year      = {2026},
+  publisher = {Springer Gabler},
+  note      = {Camera-ready}
+}
+```

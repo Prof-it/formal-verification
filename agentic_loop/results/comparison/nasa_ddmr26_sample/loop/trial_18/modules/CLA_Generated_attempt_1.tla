@@ -45,4 +45,5 @@ Spec == Init /\ [][Next]_<<mode, latchPawlPosition, motorStatus, secondaryReleas
 
 =========================================================================
 Define missing recursive function as bracket-domain.
+Define missing recursive function as bracket-domain.
 ====

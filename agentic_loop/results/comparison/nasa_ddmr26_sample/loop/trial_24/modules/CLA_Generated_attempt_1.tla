@@ -1,7 +1,7 @@
 ---- MODULE CLA_Generated_attempt_1 ----
 EXTENDS Naturals, Sequences
 
-CONSTANT N \* Number of latches
+CONSTANTS N \* Number of latches
 
 VARIABLES mode, latchPawlPosition, motorStatus, secondaryReleaseStatus
 
@@ -11,19 +11,19 @@ Init == /\ mode = [i \in 1..N |-> "RTC"]
         /\ motorStatus = [i \in 1..N |-> "operational"]
         /\ secondaryReleaseStatus = [i \in 1..N |-> "inactive"]
 
-\* Type invariant for the system
+\* Type invariant
 TypeOK == /\ mode \in [1..N -> {"RTC", "RTR", "secondaryRelease"}]
           /\ latchPawlPosition \in [1..N -> {"latched", "unlatched"}]
           /\ motorStatus \in [1..N -> {"operational", "failed"}]
           /\ secondaryReleaseStatus \in [1..N -> {"active", "inactive"}]
 
-\* Problem invariant representing the requirement for direct indication of critical states
+\* Problem invariant: Direct indication of critical states
 DDMR26 == \A i \in 1..N: 
             /\ (mode[i] = "RTC" => latchPawlPosition[i] = "unlatched")
             /\ (mode[i] = "RTR" => latchPawlPosition[i] = "latched")
             /\ (mode[i] = "secondaryRelease" => secondaryReleaseStatus[i] = "active")
 
-\* Steps representing the nominal and secondary release sequences
+\* Steps for nominal and secondary release operations
 NominalCapture == /\ \E i \in 1..N: mode[i] = "RTC"
                   /\ latchPawlPosition[i] = "unlatched"
                   /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "latched"]
@@ -38,11 +38,12 @@ SecondaryRelease == /\ \E i \in 1..N: mode[i] = "RTC" /\ motorStatus[i] = "faile
                     /\ secondaryReleaseStatus' = [secondaryReleaseStatus EXCEPT ![i] = "active"]
                     /\ mode' = [mode EXCEPT ![i] = "secondaryRelease"]
 
-Next == NominalCapture \/ NominalRelease \/ SecondaryRelease
+Next == \/ NominalCapture
+        \/ NominalRelease
+        \/ SecondaryRelease
 
-\* Specification of the system
 Spec == Init /\ [][Next]_<<mode, latchPawlPosition, motorStatus, secondaryReleaseStatus>>
-
 =========================================================================
+Define missing recursive function as bracket-domain.
 Define missing recursive function as bracket-domain.
 ====

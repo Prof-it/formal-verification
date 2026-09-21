@@ -1,0 +1,114 @@
+{
+  "task_name": "nasa_ddmr26",
+  "prompt_mode": "one_shot",
+  "terminal_status": "tlc_error",
+  "parse_success_rate": 1.0,
+  "semantic_success_rate": 1.0,
+  "generation_success": true,
+  "initial_verification_success": false,
+  "repair_iterations": 1,
+  "counterexamples_seen": 0,
+  "counterexamples_resolved": 0,
+  "skills_applied": [
+    "semantic_error_boolean_evaluation",
+    "semantic_error_boolean_evaluation"
+  ],
+  "skills_successful": 0,
+  "learning_step_index": null,
+  "human_intervention": false,
+  "metadata": {
+    "module_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_23/modules",
+    "cfg_file": "CLA_generation_eval.cfg",
+    "mode": "loop",
+    "max_iterations": "2"
+  },
+  "attempts": [
+    {
+      "attempt_id": 1,
+      "phase": "generate",
+      "prompt_name": "one_shot",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_23/modules/CLA_Generated_attempt_1.tla",
+      "status": "tlc_error",
+      "parse_ok": true,
+      "semantic_ok": true,
+      "invariants_violated": false,
+      "error_count": 1,
+      "feedback_excerpt": "Error: TLC expected a boolean value, but did not find one. 2\nError: The error occurred when TLC was evaluating the nested",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "semantic_error_boolean_evaluation"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790011564.889816,
+        "start_llm": 1790011564.889816,
+        "end_llm": 1790011564.8957179,
+        "duration_llm": 0.005901813507080078,
+        "start_tlc": 1790011564.895726,
+        "end_tlc": 1790011565.227715,
+        "duration_tlc": 0.331989049911499,
+        "end_attempt": 1790011565.231381,
+        "duration_total": 0.3415648937225342,
+        "duration_engineering_overhead": 0.003674030303955078
+      }
+    },
+    {
+      "attempt_id": 2,
+      "phase": "repair",
+      "prompt_name": "repair",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_23/modules/CLA_Generated_attempt_2.tla",
+      "status": "tlc_error",
+      "parse_ok": true,
+      "semantic_ok": true,
+      "invariants_violated": false,
+      "error_count": 1,
+      "feedback_excerpt": "Error: TLC expected a boolean value, but did not find one. 2\nError: The error occurred when TLC was evaluating the nested",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "semantic_error_boolean_evaluation"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790011565.2322052,
+        "start_llm": 1790011565.2322052,
+        "end_llm": 1790011569.282219,
+        "duration_llm": 4.050013780593872,
+        "start_tlc": 1790011569.282235,
+        "end_tlc": 1790011569.660853,
+        "duration_tlc": 0.3786180019378662,
+        "end_attempt": 1790011569.663317,
+        "duration_total": 4.431111812591553,
+        "duration_engineering_overhead": 0.002480030059814453
+      }
+    }
+  ],
+  "case_metrics": {
+    "case_id": "nasa_ddmr26_trial_None",
+    "mode": "one_shot",
+    "initial_candidate": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_23/modules/CLA_Generated_attempt_1.tla",
+    "initial_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": false
+    },
+    "final_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": false
+    },
+    "repair_attempts": 1,
+    "repair_success": false,
+    "initial_failure_classes": [
+      "semantic_error_boolean_evaluation"
+    ],
+    "resolved_failure_classes": [],
+    "remaining_failure_classes": [
+      "semantic_error_boolean_evaluation"
+    ],
+    "artifact_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_23"
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "task_name": "nasa_ddmr26",
+  "prompt_mode": "one_shot",
+  "terminal_status": "success",
+  "parse_success_rate": 1.0,
+  "semantic_success_rate": 1.0,
+  "generation_success": true,
+  "initial_verification_success": true,
+  "repair_iterations": 0,
+  "counterexamples_seen": 0,
+  "counterexamples_resolved": 0,
+  "skills_applied": [],
+  "skills_successful": 0,
+  "learning_step_index": null,
+  "human_intervention": false,
+  "metadata": {
+    "module_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_22/modules",
+    "cfg_file": "CLA_generation_eval.cfg",
+    "mode": "baseline",
+    "max_iterations": "1"
+  },
+  "attempts": [
+    {
+      "attempt_id": 1,
+      "phase": "generate",
+      "prompt_name": "one_shot",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_22/modules/CLA_Generated_attempt_1.tla",
+      "status": "success",
+      "parse_ok": true,
+      "semantic_ok": true,
+      "invariants_violated": false,
+      "error_count": 0,
+      "feedback_excerpt": "Early stop: checkpoint gated TLC success.",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {}
+    }
+  ],
+  "case_metrics": {
+    "case_id": "nasa_ddmr26_trial_None",
+    "mode": "one_shot",
+    "initial_candidate": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_22/modules/CLA_Generated_attempt_1.tla",
+    "initial_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": true
+    },
+    "final_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": true
+    },
+    "repair_attempts": 0,
+    "repair_success": false,
+    "initial_failure_classes": [
+      "unknown"
+    ],
+    "resolved_failure_classes": [
+      "unknown"
+    ],
+    "remaining_failure_classes": [],
+    "artifact_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_22"
+  }
+}

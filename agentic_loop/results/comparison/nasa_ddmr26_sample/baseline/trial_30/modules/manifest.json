@@ -1,0 +1,10 @@
+{
+  "module_name": "CLA_Generated",
+  "cfg_file": "CLA_generation_eval.cfg",
+  "labels": [],
+  "invariants": [],
+  "metadata": {
+    "description": "NASA DDMR26 Capture Latch model for DDMR 26 direct indication requirement analysis",
+    "task_file": "tasks/nasa_ddmr26_sample.yaml"
+  }
+}

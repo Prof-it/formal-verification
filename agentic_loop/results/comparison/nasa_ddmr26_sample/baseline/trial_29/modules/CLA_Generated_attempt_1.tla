@@ -1,7 +1,7 @@
 ---- MODULE CLA_Generated_attempt_1 ----
 EXTENDS Naturals, Sequences
 
-CONSTANT N \* Number of latches
+CONSTANTS N \* Number of latches
 
 VARIABLES mode, latchPawlPosition, motorStatus, secondaryReleaseStatus
 
@@ -17,7 +17,7 @@ TypeOK == /\ mode \in [1..N -> {"RTC", "RTR", "secondaryRelease"}]
           /\ motorStatus \in [1..N -> {"operational", "failed"}]
           /\ secondaryReleaseStatus \in [1..N -> {"active", "inactive"}]
 
-\* Problem invariant representing the requirement for direct indication of critical states
+\* Problem invariant representing DDMR26 requirement
 DDMR26 == \A i \in 1..N: 
             /\ (mode[i] = "RTC" => latchPawlPosition[i] = "unlatched")
             /\ (mode[i] = "RTR" => latchPawlPosition[i] = "latched")

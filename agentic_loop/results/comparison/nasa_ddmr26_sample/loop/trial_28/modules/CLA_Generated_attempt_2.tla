@@ -1,4 +1,4 @@
----- MODULE CLA_Generated_attempt_1 ----
+---- MODULE CLA_Generated_attempt_2 ----
 EXTENDS Naturals, Sequences
 
 CONSTANT N \* Number of latches
@@ -24,25 +24,30 @@ DDMR26 == \A i \in 1..N:
             /\ (mode[i] = "secondaryRelease" => secondaryReleaseStatus[i] = "active")
 
 \* Steps representing the nominal and secondary release sequences
-NominalCapture == /\ \E i \in 1..N: mode[i] = "RTC"
-                  /\ latchPawlPosition[i] = "unlatched"
-                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "latched"]
-                  /\ mode' = [mode EXCEPT ![i] = "RTR"]
+NominalCapture == \E i \in 1..N: 
+                    /\ mode[i] = "RTC"
+                    /\ latchPawlPosition[i] = "unlatched"
+                    /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "latched"]
+                    /\ mode' = [mode EXCEPT ![i] = "RTR"]
+                    /\ UNCHANGED <<motorStatus, secondaryReleaseStatus>>
 
-NominalRelease == /\ \E i \in 1..N: mode[i] = "RTR"
-                  /\ latchPawlPosition[i] = "latched"
-                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "unlatched"]
-                  /\ mode' = [mode EXCEPT ![i] = "RTC"]
+NominalRelease == \E i \in 1..N: 
+                    /\ mode[i] = "RTR"
+                    /\ latchPawlPosition[i] = "latched"
+                    /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "unlatched"]
+                    /\ mode' = [mode EXCEPT ![i] = "RTC"]
+                    /\ UNCHANGED <<motorStatus, secondaryReleaseStatus>>
 
-SecondaryRelease == /\ \E i \in 1..N: mode[i] = "RTC" /\ motorStatus[i] = "failed"
-                    /\ secondaryReleaseStatus' = [secondaryReleaseStatus EXCEPT ![i] = "active"]
-                    /\ mode' = [mode EXCEPT ![i] = "secondaryRelease"]
+SecondaryRelease == \E i \in 1..N: 
+                      /\ mode[i] = "RTC" 
+                      /\ motorStatus[i] = "failed"
+                      /\ secondaryReleaseStatus' = [secondaryReleaseStatus EXCEPT ![i] = "active"]
+                      /\ mode' = [mode EXCEPT ![i] = "secondaryRelease"]
+                      /\ UNCHANGED <<latchPawlPosition, motorStatus>>
 
 Next == NominalCapture \/ NominalRelease \/ SecondaryRelease
 
 \* Specification of the system
 Spec == Init /\ [][Next]_<<mode, latchPawlPosition, motorStatus, secondaryReleaseStatus>>
 
-=========================================================================
-Define missing recursive function as bracket-domain.
-====
+=============================================================================

@@ -1,7 +1,7 @@
 ---- MODULE CLA_Generated_attempt_1 ----
 EXTENDS Naturals, Sequences
 
-CONSTANT N \* Number of latches
+CONSTANTS N \* Number of latches
 
 VARIABLES mode, latchPawlPosition, motorStatus, secondaryReleaseStatus
 
@@ -23,22 +23,23 @@ DDMR26 == \A i \in 1..N:
             /\ (mode[i] = "RTR" => latchPawlPosition[i] = "latched")
             /\ (mode[i] = "secondaryRelease" => secondaryReleaseStatus[i] = "active")
 
-\* Steps representing the nominal and secondary release sequences
-NominalCapture == /\ \E i \in 1..N: mode[i] = "RTC"
-                  /\ latchPawlPosition[i] = "unlatched"
-                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "latched"]
-                  /\ mode' = [mode EXCEPT ![i] = "RTR"]
-
-NominalRelease == /\ \E i \in 1..N: mode[i] = "RTR"
-                  /\ latchPawlPosition[i] = "latched"
-                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "unlatched"]
+\* Steps representing the transitions of the system
+ReadyToCapture == /\ \E i \in 1..N: mode[i] = "RTR"
                   /\ mode' = [mode EXCEPT ![i] = "RTC"]
+                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "unlatched"]
+                  /\ UNCHANGED <<motorStatus, secondaryReleaseStatus>>
+
+ReadyToRelease == /\ \E i \in 1..N: mode[i] = "RTC"
+                  /\ mode' = [mode EXCEPT ![i] = "RTR"]
+                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "latched"]
+                  /\ UNCHANGED <<motorStatus, secondaryReleaseStatus>>
 
 SecondaryRelease == /\ \E i \in 1..N: mode[i] = "RTC" /\ motorStatus[i] = "failed"
-                    /\ secondaryReleaseStatus' = [secondaryReleaseStatus EXCEPT ![i] = "active"]
                     /\ mode' = [mode EXCEPT ![i] = "secondaryRelease"]
+                    /\ secondaryReleaseStatus' = [secondaryReleaseStatus EXCEPT ![i] = "active"]
+                    /\ UNCHANGED <<latchPawlPosition, motorStatus>>
 
-Next == NominalCapture \/ NominalRelease \/ SecondaryRelease
+Next == ReadyToCapture \/ ReadyToRelease \/ SecondaryRelease
 
 \* Specification of the system
 Spec == Init /\ [][Next]_<<mode, latchPawlPosition, motorStatus, secondaryReleaseStatus>>

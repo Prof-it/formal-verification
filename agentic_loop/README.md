@@ -180,3 +180,21 @@ The NASA task YAML (`tasks/nasa_ddmr26_sample.yaml`) is evaluated against invari
 ## Metric Instrumentation
 
 Automated runs persist the evaluation metrics enumerated in [`verifier_in_the_loop.tex`](agentic_loop/verifier_in_the_loop.tex:105). [`persist_run_result`](agentic_loop/src/agentic_loop/reporting.py:15) emits JSON fields for generation and verification success, counterexample statistics, skill usage traces, learning step indices, and human intervention flags. [`compare_cli`](agentic_loop/src/agentic_loop/compare_cli.py:37) consumes these values when producing CSV/Markdown summaries and can optionally aggregate learning efficiency across runs via `--learning-series` inputs.
+
+
+## 📚 Publication
+
+This repository accompanies the following research contribution:
+
+- **Lu, T. (2026).** *Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing.* Technologie und Organisation. Springer Gabler, 2026. [Camera-ready](https://link.springer.com/book/9783658515102)
+
+```bibtex
+@book{lu2026formal,
+  author    = {Lu, Tianxiang},
+  title     = {Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing},
+  series    = {Technologie und Organisation},
+  year      = {2026},
+  publisher = {Springer Gabler},
+  note      = {Camera-ready}
+}
+```

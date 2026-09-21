@@ -1,0 +1,82 @@
+{
+  "task_name": "nasa_ddmr26",
+  "prompt_mode": "one_shot",
+  "terminal_status": "parse_error",
+  "parse_success_rate": 0.0,
+  "semantic_success_rate": 0.0,
+  "generation_success": false,
+  "initial_verification_success": false,
+  "repair_iterations": 0,
+  "counterexamples_seen": 0,
+  "counterexamples_resolved": 0,
+  "skills_applied": [
+    "parse_error_if_then_else"
+  ],
+  "skills_successful": 0,
+  "learning_step_index": null,
+  "human_intervention": false,
+  "metadata": {
+    "module_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_57/modules",
+    "cfg_file": "CLA_generation_eval.cfg",
+    "mode": "baseline",
+    "max_iterations": "1"
+  },
+  "attempts": [
+    {
+      "attempt_id": 1,
+      "phase": "generate",
+      "prompt_name": "one_shot",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_57/modules/CLA_Generated_attempt_1.tla",
+      "status": "parse_error",
+      "parse_ok": false,
+      "semantic_ok": false,
+      "invariants_violated": false,
+      "error_count": 1,
+      "feedback_excerpt": "***Parse Error***\nFatal errors while parsing TLA+ spec in file CLA_Generated_attempt_1\n*** Errors: 1\nError: Parsing or semantic analysis failed.",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "parse_error_if_then_else"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790012023.0827231,
+        "start_llm": 1790012023.082724,
+        "end_llm": 1790012030.477101,
+        "duration_llm": 7.394376993179321,
+        "start_tlc": 1790012030.47715,
+        "end_tlc": 1790012030.676645,
+        "duration_tlc": 0.1994950771331787,
+        "end_attempt": 1790012030.679397,
+        "duration_total": 7.596673965454102,
+        "duration_engineering_overhead": 0.0028018951416015625
+      }
+    }
+  ],
+  "case_metrics": {
+    "case_id": "nasa_ddmr26_trial_None",
+    "mode": "one_shot",
+    "initial_candidate": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_57/modules/CLA_Generated_attempt_1.tla",
+    "initial_status": {
+      "parse": false,
+      "semantic": false,
+      "tlc": false
+    },
+    "final_status": {
+      "parse": false,
+      "semantic": false,
+      "tlc": false
+    },
+    "repair_attempts": 0,
+    "repair_success": false,
+    "initial_failure_classes": [
+      "unknown"
+    ],
+    "resolved_failure_classes": [],
+    "remaining_failure_classes": [
+      "unknown"
+    ],
+    "artifact_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_57"
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "task_name": "nasa_ddmr26",
+  "prompt_mode": "one_shot",
+  "terminal_status": "tlc_error",
+  "parse_success_rate": 0.5,
+  "semantic_success_rate": 0.5,
+  "generation_success": false,
+  "initial_verification_success": false,
+  "repair_iterations": 1,
+  "counterexamples_seen": 0,
+  "counterexamples_resolved": 0,
+  "skills_applied": [
+    "parse_error_if_then_else",
+    "missing_next_state_assignment"
+  ],
+  "skills_successful": 0,
+  "learning_step_index": null,
+  "human_intervention": false,
+  "metadata": {
+    "module_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_52/modules",
+    "cfg_file": "CLA_generation_eval.cfg",
+    "mode": "loop",
+    "max_iterations": "2"
+  },
+  "attempts": [
+    {
+      "attempt_id": 1,
+      "phase": "generate",
+      "prompt_name": "one_shot",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_52/modules/CLA_Generated_attempt_1.tla",
+      "status": "parse_error",
+      "parse_ok": false,
+      "semantic_ok": false,
+      "invariants_violated": false,
+      "error_count": 1,
+      "feedback_excerpt": "***Parse Error***\nFatal errors while parsing TLA+ spec in file CLA_Generated_attempt_1\n*** Errors: 1\nError: Parsing or semantic analysis failed.",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "parse_error_if_then_else"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790011951.2698848,
+        "start_llm": 1790011951.269886,
+        "end_llm": 1790011951.276897,
+        "duration_llm": 0.007010936737060547,
+        "start_tlc": 1790011951.276916,
+        "end_tlc": 1790011951.4553611,
+        "duration_tlc": 0.17844510078430176,
+        "end_attempt": 1790011951.460259,
+        "duration_total": 0.19037413597106934,
+        "duration_engineering_overhead": 0.004918098449707031
+      }
+    },
+    {
+      "attempt_id": 2,
+      "phase": "repair",
+      "prompt_name": "repair",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_52/modules/CLA_Generated_attempt_2.tla",
+      "status": "tlc_error",
+      "parse_ok": true,
+      "semantic_ok": true,
+      "invariants_violated": false,
+      "error_count": 1,
+      "feedback_excerpt": "Error: Successor state is not completely specified by action NominalCaptureRelease of the next-state relation. The following variables are not defined: motorStatus, secondaryReleaseStatus.\nError: The behavior up to this point is:",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "missing_next_state_assignment"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790011951.461557,
+        "start_llm": 1790011951.461557,
+        "end_llm": 1790011958.598119,
+        "duration_llm": 7.13656210899353,
+        "start_tlc": 1790011958.5981388,
+        "end_tlc": 1790011958.974145,
+        "duration_tlc": 0.3760061264038086,
+        "end_attempt": 1790011958.9756758,
+        "duration_total": 7.514118909835815,
+        "duration_engineering_overhead": 0.0015506744384765625
+      }
+    }
+  ],
+  "case_metrics": {
+    "case_id": "nasa_ddmr26_trial_None",
+    "mode": "one_shot",
+    "initial_candidate": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_52/modules/CLA_Generated_attempt_1.tla",
+    "initial_status": {
+      "parse": false,
+      "semantic": false,
+      "tlc": false
+    },
+    "final_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": false
+    },
+    "repair_attempts": 1,
+    "repair_success": false,
+    "initial_failure_classes": [
+      "unknown"
+    ],
+    "resolved_failure_classes": [
+      "unknown"
+    ],
+    "remaining_failure_classes": [
+      "missing_next_state_assignment"
+    ],
+    "artifact_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_52"
+  }
+}

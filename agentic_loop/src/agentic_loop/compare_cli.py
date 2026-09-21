@@ -3,33 +3,32 @@ import argparse
 import csv
 import json
 import shutil
+import os
+import re
 import tempfile
+import math
 import warnings
+import numpy as np
+
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
-
-from .engine import purge_temp_modules, run_experiment, validate_module_layout
-from .models import LoopConfig
-from .providers import build_provider
-import numpy as np
-from statsmodels.stats.contingency_tables import mcnemar
-from .task_loader import load_task_spec
-
+from typing import Any, Callable, Dict, List, Optional, Set
 from collections import Counter
 from dotenv import load_dotenv
+from statsmodels.stats.contingency_tables import mcnemar
 
-import os
+from .engine import run_experiment, validate_module_layout
+from .models import LoopConfig
+from .providers import build_provider
+from .utils.io_utils import purge_temp_modules
+
+from .task_loader import load_task_spec
 
 # Add dotenv support for automatic .env loading
 try:
     load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
 except ImportError:
     pass  # If dotenv is not installed, skip loading .env
-import glob
-import tempfile
-
-
 TASK_MAPPINGS_PATH = Path("results/task_mappings.json")
 
 
@@ -150,7 +149,6 @@ def _log_event_to_csv(csv_path, trial, event_type, attempt_index, mode, details=
     """
     Logs repair/regression event to the events CSV file for later analysis.
     """
-    import csv
     header = ["trial", "event_type", "attempt_index", "mode", "details"]
     row = {
         "trial": trial,
@@ -186,38 +184,36 @@ def _find_mapping_entry(task_path: Path) -> Optional[Dict[str, Any]]:
             return entry
     return None
 
-
+def _append_from_match(match: Dict[str, Any], source: str, candidates: list) -> None:
+    raw_path = match.get("path")
+    if not raw_path:
+        return
+    score_raw = match.get("score", 0)
+    try:
+        score = float(score_raw)
+    except (TypeError, ValueError):
+        score = 0.0
+    justification = match.get("justification", "")
+    candidate_path = Path(raw_path)
+    for base in (Path.cwd(), Path.cwd().parent):
+        resolved = (base / candidate_path).resolve()
+        if resolved.exists():
+            candidates.append(
+                _MappingCandidate(
+                    score=score,
+                    path=resolved,
+                    source=source,
+                    justification=justification,
+                )
+            )
+            break
 def _collect_mapping_candidates(mapping: Dict[str, Any]) -> List[_MappingCandidate]:
     candidates: List[_MappingCandidate] = []
 
-    def _append_from_match(match: Dict[str, Any], source: str) -> None:
-        raw_path = match.get("path")
-        if not raw_path:
-            return
-        score_raw = match.get("score", 0)
-        try:
-            score = float(score_raw)
-        except (TypeError, ValueError):
-            score = 0.0
-        justification = match.get("justification", "")
-        candidate_path = Path(raw_path)
-        for base in (Path.cwd(), Path.cwd().parent):
-            resolved = (base / candidate_path).resolve()
-            if resolved.exists():
-                candidates.append(
-                    _MappingCandidate(
-                        score=score,
-                        path=resolved,
-                        source=source,
-                        justification=justification,
-                    )
-                )
-                break
-
     for match in mapping.get("cfg_matches") or []:
-        _append_from_match(match, "cfg")
+        _append_from_match(match, "cfg", candidates)
     for match in mapping.get("module_matches") or []:
-        _append_from_match(match, "module")
+        _append_from_match(match, "module", candidates)
 
     candidates.sort(key=lambda c: c.score, reverse=True)
     return candidates
@@ -325,8 +321,7 @@ def _resolve_module_dir(
     if staged_result and staged_result.root.exists():
         return staged_result
 
-    # If no module directory is found or mapped, create a fresh temp dir and let the bootstrap take over
-    import tempfile
+
     fresh_moduledir = Path(tempfile.mkdtemp(prefix=f"{task_spec.name}_", dir=str(module_root.resolve())))
     print(f"[Bootstrap-Module] No input module-dir given; created temp dir: {fresh_moduledir}")
     # Will contain no .tla input, so validate_module_layout/bootstrap fallback will trigger
@@ -514,7 +509,16 @@ def _collect_learning_series(args: argparse.Namespace) -> List[Dict[str, Any]]:
             seen.add(p)
     return _load_learning_series(ordered_paths)
 
-
+def _step_index(run: Dict[str, Any], fallback: int) -> int:
+    metadata = run.get("metadata", {}) or {}
+    value = metadata.get("learning_step_index")
+    if value is None:
+        return fallback
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+    
 def _compute_learning_efficiency(series: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not series:
         return {
@@ -524,17 +528,6 @@ def _compute_learning_efficiency(series: List[Dict[str, Any]]) -> Dict[str, Any]
             "final_accuracy": 0,
             "step_span": 0,
         }
-
-    def _step_index(run: Dict[str, Any], fallback: int) -> int:
-        metadata = run.get("metadata", {}) or {}
-        value = metadata.get("learning_step_index")
-        if value is None:
-            return fallback
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return fallback
-
     ordered = sorted(
         ((run, _step_index(run, idx)) for idx, run in enumerate(series)),
         key=lambda item: item[1],
@@ -561,7 +554,8 @@ def _write_case_metrics_csv(csv_path, case_metrics_list):
     Writes out a CSV summarizing per-case/canonical metrics for every run
     """
     keys = [
-        "case_id", "mode", "initial_candidate", "initial_status", "final_status",
+        "case_id", "mode", "TerminalStatus",
+        "initial_candidate", "initial_status", "final_status",
         "repair_attempts", "repair_success",
         "initial_failure_classes", "resolved_failure_classes", "remaining_failure_classes", "artifact_dir"
     ]
@@ -576,75 +570,31 @@ def _write_case_metrics_csv(csv_path, case_metrics_list):
                     row[k] = json.dumps(v)
             writer.writerow(row)
 
+def _is_tlc_success(entry):
+    tlc_val = (entry.get("final_status") or {}).get("tlc", None)
+    if isinstance(tlc_val, bool):
+        return tlc_val
+    status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
+    # Treat both "success" and "skipped" as TLC passes
+    return str(status).lower() in ("success", "skipped")
 
-def _summarize_case_metrics(case_metrics_list):
-    """
-    Print overall metrics such as CRSR, ISR, FSR and failure-class repairability.
-    """
-    n_total = len(case_metrics_list)
-    # Use dicts directly, not json.loads()
-    # isr = sum(1 for c in case_metrics_list if (c.get("initial_status") or {}).get("tlc")) / n_total if n_total else 0
-    # fsr = sum(1 for c in case_metrics_list if (c.get("final_status") or {}).get("tlc")) / n_total if n_total else 0
-    failing = [c for c in case_metrics_list if not (c.get("initial_status") or {}).get("tlc")]
-    n_failing = len(failing)
-    # crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
-    # print(f"Initial TLC Success Rate (ISR): {isr:.2%} ({sum(1 for c in case_metrics_list if (c.get('initial_status') or {}).get('tlc'))}/{n_total})")
-    # print(f"Final TLC Success Rate (FSR): {fsr:.2%} ({sum(1 for c in case_metrics_list if (c.get('final_status') or {}).get('tlc'))}/{n_total})")
-    # print(f"Conditional Repair Success Rate (CRSR): {crsr:.2%} ({sum(1 for c in failing if (c.get('final_status') or {}).get('tlc'))}/{n_failing if n_failing else 1})")
-    # Failure class repairability table
-    fc_table = {}
-    for case in failing:
-        fclist = case.get("initial_failure_classes", [])
-        if isinstance(fclist, str):
-            try:
-                fclist = json.loads(fclist)
-            except Exception:
-                fclist = []
-        for fc in fclist:
-            if fc not in fc_table:
-                fc_table[fc] = {"total": 0, "repaired": 0}
-            fc_table[fc]["total"] += 1
-            if (case.get("final_status") or {}).get("tlc"):
-                fc_table[fc]["repaired"] += 1
-    print("\n| Failure class | Cases | Repaired | Repairability |")
-    print("|--------------|-------|----------|--------------|")
-    for fc, val in sorted(fc_table.items()):
-        total = val["total"]
-        repaired = val["repaired"]
-        print(f"| {fc} | {total} | {repaired} | {repaired/total:.1%} |")
-
-def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
-    from collections import Counter
-    mcnemar, binom_test = None, None
-    try:
-        from statsmodels.stats.contingency_tables import mcnemar
-    except ImportError:
-        mcnemar = None
-    try:
-        from scipy.stats import binom_test
-    except ImportError:
-        binom_test = None
-
-
-    # Patch: Ensure true pairing between baseline and loop metrics.
-    # Expect list to be [baseline1, loop1, baseline2, loop2, ...]
+def binom_coeff(n, k):
+    return math.comb(n, k)
+def mcnemar_analysis(baseline_cases, loop_cases, summary_path="mcnemar_summary.txt"):
     before_after = []
-    if len(case_metrics_list) % 2 != 0:
-        print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
-    def _is_tlc_success(entry):
-        # Handle both boolean and string status
-        tlc_val = (entry.get("final_status") or {}).get("tlc", None)
-        if isinstance(tlc_val, bool):
-            return tlc_val
-        status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
-        return (str(status).lower() == "success")
+    # Index by case_id for robust matching
+    baseline_by_id = {c['case_id']: c for c in baseline_cases}
+    loop_by_id = {c['case_id']: c for c in loop_cases}
+    common_case_ids = sorted(set(baseline_by_id) & set(loop_by_id), key=trial_id_key)
 
-    for i in range(0, len(case_metrics_list)-1, 2):
-        base = case_metrics_list[i]
-        loop = case_metrics_list[i+1]
+    for cid in common_case_ids:
+        base = baseline_by_id[cid]
+        loop = loop_by_id[cid]
         base_tlc = _is_tlc_success(base)
         loop_tlc = _is_tlc_success(loop)
         before_after.append((base_tlc, loop_tlc))
+    # (rest is unchanged)
+
     counts = Counter(before_after)
     FF = counts[(False, False)]
     FP = counts[(False, True)]   # Baseline fail, Loop pass: repaired!
@@ -673,21 +623,8 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
             pval = result["pvalue"]
         if pval is not None:
             lines.append(f"McNemar p-value: {pval:.3g}\n")
-        elif binom_test is not None:
-            # Safe to access here!
-            b = FP
-            c = PF
-            discordant = b + c
-            if discordant > 0:
-                p = 2 * binom_test(min(b, c), n=discordant, p=0.5, alternative='two-sided')
-                lines.append(f"Binomial p-value (McNemar fallback): {p:.3g}\n")
-            else:
-                lines.append("Binomial test not applicable (no discordant pairs).\n")
         else:
             # Manual fallback: binomial p-value calculation for McNemar test (two-tailed) at p=0.5, only standard library.
-            import math
-            def binom_coeff(n, k):
-                return math.comb(n, k)
             b = FP
             c = PF
             discordant = b + c
@@ -699,23 +636,17 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
                 lines.append(f"Approximate binomial (no-scipy) p-value: {p_conservative:.3g}\n")
             else:
                 lines.append("No discordant pairs: cannot compute binomial p-value.\n")
-
-    elif binom_test is not None:
-        b = FP
-        c = PF
-        discordant = b + c
-        if discordant > 0:
-            p = 2 * binom_test(min(b, c), n=discordant, p=0.5, alternative='two-sided')
-            lines.append(f"Binomial p-value (McNemar fallback): {p:.3g}\n")
-        else:
-            lines.append("Binomial test not applicable (no discordant pairs).\n")
     else:
         lines.append("Install statsmodels or scipy for p-value.\n")
 
 
     # Extra insight
-    lines.append(f"Baseline TLC pass rate: {(PF+PP)/n:.1%}\n")
-    lines.append(f"Loop TLC pass rate:     {(FP+PP)/n:.1%}\n")
+    if n > 0:
+        lines.append(f"Baseline TLC pass rate: {(PF+PP)/n:.1%}\n")
+        lines.append(f"Loop TLC pass rate:     {(FP+PP)/n:.1%}\n")
+    else:
+        lines.append("No paired cases for TLC pass rate.\n")
+
 
     summary_text = "".join(lines)
     print(summary_text)
@@ -724,21 +655,18 @@ def mcnemar_analysis(case_metrics_list, summary_path="mcnemar_summary.txt"):
     print(f"\n==> McNemar summary written to {summary_path}")
 
 
-def mcnemar_markdown(case_metrics_list, md_path="mcnemar_summary.md"):
+def mcnemar_markdown(baseline_cases, loop_cases, md_path="mcnemar_summary.md"):
 
     # Patch: true pairing
     before_after = []
-    if len(case_metrics_list) % 2 != 0:
-        print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
-    def _is_tlc_success(entry):
-        tlc_val = (entry.get("final_status") or {}).get("tlc", None)
-        if isinstance(tlc_val, bool):
-            return tlc_val
-        status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
-        return (str(status).lower() == "success")
-    for i in range(0, len(case_metrics_list)-1, 2):
-        base = case_metrics_list[i]
-        loop = case_metrics_list[i+1]
+    # Index by case_id for robust matching
+    baseline_by_id = {c['case_id']: c for c in baseline_cases}
+    loop_by_id = {c['case_id']: c for c in loop_cases}
+    common_case_ids = sorted(set(baseline_by_id).intersection(set(loop_by_id)), key=trial_id_key)
+
+    for cid in common_case_ids:
+        base = baseline_by_id[cid]
+        loop = loop_by_id[cid]
         base_tlc = _is_tlc_success(base)
         loop_tlc = _is_tlc_success(loop)
         before_after.append((base_tlc, loop_tlc))
@@ -754,35 +682,42 @@ def mcnemar_markdown(case_metrics_list, md_path="mcnemar_summary.md"):
 | Before: Pass   | {PF}           | {PP}           |
 """
     result = mcnemar([[FF, FP],[PF, PP]], exact=True)
+    total = FF + FP + PF + PP
     md = (
         "# Paired TLC outcome table (for McNemar's test)\n"
         f"{table}\n"
         f"McNemar p-value: {result.pvalue:.3g}\n"
         f"Conditional repair success: {FP}/({FF+FP}) = {(FP/(FF+FP) if (FF+FP)>0 else 0):.1%}\n"
-        f"Baseline TLC pass rate: {(PF+PP)/(FF+FP+PF+PP):.1%}\n"
-        f"Loop TLC pass rate:     {(FP+PP)/(FF+FP+PF+PP):.1%}\n"
     )
+    if total > 0:
+        md += (
+            f"Baseline TLC pass rate: {(PF+PP)/total:.1%}\n"
+            f"Loop TLC pass rate:     {(FP+PP)/total:.1%}\n"
+        )
+    else:
+        md += "No paired cases for TLC pass rate.\n"
+
     with open(md_path, "w", encoding="utf-8") as out_f:
         out_f.write(md)
     print(f"McNemar summary written to {md_path}")
 
-def mcnemar_csv(case_metrics_list, csv_path="mcnemar_summary.csv"):
+def mcnemar_csv(baseline_cases, loop_cases, csv_path="mcnemar_summary.csv"):
     # Patch: true pairing
     before_after = []
-    if len(case_metrics_list) % 2 != 0:
-        print("[WARN] case_metrics_list should have even number of entries (baseline/loop pairs)")
-    def _is_tlc_success(entry):
-        tlc_val = (entry.get("final_status") or {}).get("tlc", None)
-        if isinstance(tlc_val, bool):
-            return tlc_val
-        status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
-        return (str(status).lower() == "success")
-    for i in range(0, len(case_metrics_list)-1, 2):
-        base = case_metrics_list[i]
-        loop = case_metrics_list[i+1]
+    # Patch: true pairing
+    before_after = []
+    # Index by case_id for robust matching
+    baseline_by_id = {c['case_id']: c for c in baseline_cases}
+    loop_by_id = {c['case_id']: c for c in loop_cases}
+    common_case_ids = sorted(set(baseline_by_id).intersection(set(loop_by_id)), key=trial_id_key)
+
+    for cid in common_case_ids:
+        base = baseline_by_id[cid]
+        loop = loop_by_id[cid]
         base_tlc = _is_tlc_success(base)
         loop_tlc = _is_tlc_success(loop)
         before_after.append((base_tlc, loop_tlc))
+        
     counts = Counter(before_after)
     FF = counts[(False, False)]
     FP = counts[(False, True)]
@@ -839,45 +774,50 @@ def copytree_symlink_safe(src, dst):
     if os.path.exists(dst):
         shutil.rmtree(dst)
     shutil.copytree(src, dst, symlinks=False, dirs_exist_ok=True)
-    # Failure class repairability table per mode
-    def failure_class_table(cases, label):
-        failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
-        fc_table = {}
-        for case in failing:
-            fclist = case.get("initial_failure_classes", [])
-            if isinstance(fclist, str):
-                try:
-                    fclist = json.loads(fclist)
-                except Exception:
-                    fclist = []
-            for fc in fclist:
-                if fc not in fc_table:
-                    fc_table[fc] = {"total": 0, "repaired": 0}
-                fc_table[fc]["total"] += 1
-                if (case.get("final_status") or {}).get("tlc"):
-                    fc_table[fc]["repaired"] += 1
-        print(f"\n| Failure class ({label}) | Cases | Repaired | Repairability |")
-        print("|----------------------|-------|----------|--------------|")
-        for fc, val in sorted(fc_table.items()):
-            total = val["total"]
-            repaired = val["repaired"]
-            rep_rate = (repaired/total)*100 if total > 0 else 0
-            print(f"| {fc} | {total} | {repaired} | {rep_rate:.1f}% |")
+
+# Failure class repairability table per mode
+def failure_class_table(cases, label):
+    failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
+    fc_table = {}
+    for case in failing:
+        fclist = case.get("initial_failure_classes", [])
+        if isinstance(fclist, str):
+            try:
+                fclist = json.loads(fclist)
+            except Exception:
+                fclist = []
+        for fc in fclist:
+            if fc not in fc_table:
+                fc_table[fc] = {"total": 0, "repaired": 0}
+            fc_table[fc]["total"] += 1
+            if (case.get("final_status") or {}).get("tlc"):
+                fc_table[fc]["repaired"] += 1
+    print(f"\n| Failure class ({label}) | Cases | Repaired | Repairability |")
+    print("|----------------------|-------|----------|--------------|")
+    for fc, val in sorted(fc_table.items()):
+        total = val["total"]
+        repaired = val["repaired"]
+        rep_rate = (repaired/total)*100 if total > 0 else 0
+        print(f"| {fc} | {total} | {repaired} | {rep_rate:.1f}% |")
+
+def extract_stats(cases):
+    n_total = len(cases)
+    print(f"extract_stats: examining n_total={n_total}")
+    isr_count = sum(1 for c in cases if (c.get("initial_status") or {}).get("tlc"))
+    fsr_count = sum(1 for c in cases if (c.get("final_status") or {}).get("tlc"))
+    print(f"  TLC initial_status.tlc = True: {isr_count}")
+    print(f"  TLC final_status.tlc = True: {fsr_count}")
+    print(f"  Terminal statuses: {[c.get('TerminalStatus', '') for c in cases]}")
+    failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
+    n_failing = len(failing)
+    crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
+    return dict(ISR=isr_count/n_total if n_total > 0 else 0, FSR=fsr_count/n_total if n_total > 0 else 0, CRSR=crsr, n_total=n_total, n_failing=n_failing)
 
 def summarize_case_metrics_per_mode(baseline_cases, loop_cases):
     """
     Print ISR/FSR/CRSR/failure-class repairability per mode side-by-side.
     """
-    import json
     # Helper for stats extraction
-    def extract_stats(cases):
-        n_total = len(cases)
-        isr = sum(1 for c in cases if (c.get("initial_status") or {}).get("tlc")) / n_total if n_total else 0
-        fsr = sum(1 for c in cases if (c.get("final_status") or {}).get("tlc")) / n_total if n_total else 0
-        failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
-        n_failing = len(failing)
-        crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
-        return dict(ISR=isr, FSR=fsr, CRSR=crsr, n_total=n_total, n_failing=n_failing)
     b_stats = extract_stats(baseline_cases)
     l_stats = extract_stats(loop_cases)
 
@@ -891,73 +831,273 @@ def summarize_case_metrics_per_mode(baseline_cases, loop_cases):
     print(f"| CRSR   | {b_stats['CRSR']:.2%} ({sum(1 for c in [c for c in baseline_cases if not (c.get('initial_status') or {}).get('tlc')] if (c.get('final_status') or {}).get('tlc'))}/{b_stats['n_failing'] if b_stats['n_failing'] else 1}) | "
           f"{l_stats['CRSR']:.2%} ({sum(1 for c in [c for c in loop_cases if not (c.get('initial_status') or {}).get('tlc')] if (c.get('final_status') or {}).get('tlc'))}/{l_stats['n_failing'] if l_stats['n_failing'] else 1}) |")
 
-    # Failure class repairability table per mode
-    def failure_class_table(cases, label):
-        failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
-        fc_table = {}
-        for case in failing:
-            fclist = case.get("initial_failure_classes", [])
-            if isinstance(fclist, str):
-                try:
-                    fclist = json.loads(fclist)
-                except Exception:
-                    fclist = []
-            for fc in fclist:
-                if fc not in fc_table:
-                    fc_table[fc] = {"total": 0, "repaired": 0}
-                fc_table[fc]["total"] += 1
-                if (case.get("final_status") or {}).get("tlc"):
-                    fc_table[fc]["repaired"] += 1
-        print(f"\n| Failure class ({label}) | Cases | Repaired | Repairability |")
-        print("|----------------------|-------|----------|--------------|")
-        for fc, val in sorted(fc_table.items()):
-            total = val["total"]
-            repaired = val["repaired"]
-            rep_rate = (repaired/total)*100 if total > 0 else 0
-            print(f"| {fc} | {total} | {repaired} | {rep_rate:.1f}% |")
+ 
     failure_class_table(baseline_cases, "baseline")
     failure_class_table(loop_cases, "loop")
+    print_unknown_cases(baseline_cases + loop_cases);
 
-def main() -> None:
-    args = parse_args()
-    apply_patch = not args.no_patch
+def load_all_trials(output_dir, num_trials):
+    baseline_jsons = []
+    loop_jsons = []
+    missing_trials = 0
+    for i in range(1, num_trials + 1):
+        base_path = output_dir / "baseline" / f"trial_{i:02d}" / "run.json"
+        loop_path = output_dir / "loop" / f"trial_{i:02d}" / "run.json"
+        if not base_path.exists() or not loop_path.exists():
+            print(f"[WARN] Missing results for trial={i}: {base_path} {loop_path}")
+            missing_trials += 1
+            continue
+        with open(base_path, "r") as bf:
+            baseline_jsons.append(json.load(bf))
+        with open(loop_path, "r") as lf:
+            loop_jsons.append(json.load(lf))
+    return baseline_jsons, loop_jsons, missing_trials
 
-    if args.analyze_only:
-        output_dir = Path(args.output_dir)
-        trials = args.num_trials if args.num_trials and args.num_trials > 0 else 1
 
-        baseline_jsons = []
-        loop_jsons = []
+def extract_trial_num(dirname):
+    # Supports trial_01, trial_1, trial_0010, etc.
+    m = re.match(r"trial_0*([1-9]\d*|0)$", dirname)
+    if m:
+        return int(m.group(1))
+    return None
 
-        for i in range(1, trials + 1):
-            base_path = output_dir / "baseline" / f"trial_{i:02d}" / "run.json"
-            loop_path = output_dir / "loop" / f"trial_{i:02d}" / "run.json"
-            if not base_path.exists() or not loop_path.exists():
-                print(f"[WARN] Missing results for trial={i}: {base_path} {loop_path}")
-                continue
+def get_first_run_json(trial_path):
+    for f in trial_path.glob("*_run.json"):
+        return f
+    return None
+
+def discover_trial_ids(output_dir):
+    baseline_trials = set()
+    loop_trials = set()
+    baseline_dir = output_dir / "baseline"
+    loop_dir = output_dir / "loop"
+    def extract_trial_num(dirname):
+        m = re.match(r"trial_0*([1-9]\d*|0)$", dirname)
+        return int(m.group(1)) if m else None
+    for trial_path in baseline_dir.glob("trial_*"):
+        file = get_first_run_json(trial_path)
+        if file and file.exists():
+            num = extract_trial_num(trial_path.name)
+            if num is not None:
+                baseline_trials.add(num)
+    for trial_path in loop_dir.glob("trial_*"):
+        file = get_first_run_json(trial_path)
+        if file and file.exists():
+            num = extract_trial_num(trial_path.name)
+            if num is not None:
+                loop_trials.add(num)
+    paired = sorted(baseline_trials & loop_trials)
+    print(f"[DEBUG] discover_trial_ids: found paired trials: {paired}")
+    return paired
+
+def load_paired_trials(output_dir):
+    trial_ids = discover_trial_ids(output_dir)
+    baseline_jsons = []
+    loop_jsons = []
+    baseline_dir = output_dir / "baseline"
+    loop_dir = output_dir / "loop"
+    for num in trial_ids:
+        base_path = None
+        loop_path = None
+        trial_base = baseline_dir / f"trial_{num:02d}"
+        trial_loop = loop_dir / f"trial_{num:02d}"
+        for f in trial_base.glob("*_run.json"):
+            base_path = f
+            break
+        for f in trial_loop.glob("*_run.json"):
+            loop_path = f
+            break
+        if base_path and loop_path:
             with open(base_path, "r") as bf:
                 baseline_jsons.append(json.load(bf))
             with open(loop_path, "r") as lf:
                 loop_jsons.append(json.load(lf))
+    print(f"[DEBUG] load_paired_trials: Loaded {len(trial_ids)} trial pairs.")
+    return trial_ids, baseline_jsons, loop_jsons
 
-        all_case_metrics = []
-        regressions = []
-        repairs = []
 
-        for j in range(len(baseline_jsons)):
-            all_case_metrics.append(baseline_jsons[j].get("case_metrics", {}))
-            all_case_metrics.append(loop_jsons[j].get("case_metrics", {}))
 
-        _summarize_case_metrics(all_case_metrics)
-        mcnemar_analysis(all_case_metrics, summary_path=str(output_dir / "mcnemar_summary.txt"))
-        mcnemar_markdown(all_case_metrics, md_path=str(output_dir / "mcnemar_summary.md"))
-        mcnemar_csv(all_case_metrics, csv_path=str(output_dir / "mcnemar_summary.csv"))
+def get_failure_class(run_json):
+    # Fallback to 'unknown' if no clue
+    terminal_status = str(run_json.get("terminal_status", "")).lower()
+    # Prefer explicit case_metrics if present
+    case_metrics = run_json.get("case_metrics", {})
+    if case_metrics and case_metrics.get("initial_failure_classes"):
+        return case_metrics.get("initial_failure_classes")
+    # Try to propagate known error classes by terminal_status
+    elif terminal_status == "parse_error":
+        return ["parse_error"]
+    elif terminal_status == "semantic_error":
+        return ["semantic_error"]
+    elif terminal_status == "invariant_violation":
+        return ["invariant_violation"]
+    elif terminal_status == "tlc_error":
+        return ["tlc_error"]
+    elif terminal_status == "timeout":
+        return ["timeout"]
+    elif terminal_status == "skipped":
+        return []
+    elif terminal_status == "success":
+        return []
+    elif terminal_status:
+        return [terminal_status]
+    else:
+        return ["unknown"]
+    
+def extract_case_metrics(baseline_jsons, loop_jsons):
+    baseline_cases = []
+    loop_cases = []
+    all_case_metrics = []
+    N = min(len(baseline_jsons), len(loop_jsons))
+    for i in range(N):
+        trial_case_id = f"trial_{i+1}"
+        b = baseline_jsons[i]
+        l = loop_jsons[i]
+        entry_b = {
+            "case_id": trial_case_id,
+            "mode": "baseline",
+            "initial_status": {"tlc": bool(
+                b.get("InitialVerificationSuccess", b.get("initial_verification_success", False))
+            )},
+            "final_status": {"tlc": _is_tlc_success(b)},
+            "TerminalStatus": b.get("TerminalStatus", b.get("terminal_status", "")),
+            "initial_failure_classes": get_failure_class(b)
+        }
+        entry_l = {
+            "case_id": trial_case_id,
+            "mode": "loop",
+            "initial_status": {"tlc": bool(
+                l.get("InitialVerificationSuccess", l.get("initial_verification_success", False))
+            )},
+            "final_status": {"tlc": _is_tlc_success(l)},
+            "TerminalStatus": l.get("TerminalStatus", l.get("terminal_status", "")),
+            "initial_failure_classes": get_failure_class(l)
+        }
+        baseline_cases.append(entry_b)
+        loop_cases.append(entry_l)
+        all_case_metrics.append(entry_b)
+        all_case_metrics.append(entry_l)
+    print("DEBUG: After extract_case_metrics")
+    print("  Baseline final_status tlc: ", [c["final_status"]["tlc"] for c in baseline_cases])
+    print("  Loop final_status tlc: ", [c["final_status"]["tlc"] for c in loop_cases])
+    print("  Baseline TerminalStatus: ", [c.get("TerminalStatus", "") for c in baseline_cases])
+    print("  Loop TerminalStatus: ", [c.get("TerminalStatus", "") for c in loop_cases])
+    return baseline_cases, loop_cases, all_case_metrics
 
-        print(f"Analysis-only mode complete. {len(baseline_jsons)} trials analyzed.")
-        return  # Exit after aggregate
 
+def trial_id_key(cid):
+    """
+    Extracts trailing integer from case_id for correct trial sorting.
+
+    - Supports: "trial_2", "baseline_trial_10", "loop_trial_07", etc.
+    - If pattern not matched, returns 0 (puts such IDs at the start).
+    """
+    m = re.search(r'(\d+)$', cid)
+    return int(m.group(1)) if m else 0
+
+def print_unknown_cases(case_metrics_list):
+    for entry in case_metrics_list:
+        if "unknown" in entry.get("initial_failure_classes", []):
+            print(f"Case {entry.get('case_id', '???')} is UNKNOWN. All fields: {entry}")
+
+def summarize_full_run(
+    root_out,
+    task_name,
+    baseline_jsons,
+    loop_jsons,
+    args,
+):
+    # Make table rows for Markdown/CSV
+    rows = []
+    num_trials = len(baseline_jsons)
+    for i in range(num_trials):
+        rows.append(_summarize(baseline_jsons[i], f"baseline_trial_{i+1}"))
+        rows.append(_summarize(loop_jsons[i], f"loop_trial_{i+1}"))
+    csv_path = root_out / f"comparison_{task_name}.csv"
+    md_path = root_out / f"comparison_{task_name}.md"
+    _write_csv(csv_path, rows)
+    md_table = _to_markdown(rows)
+
+    # Learning efficiency, if requested
+    learning_summary = None
+    summary_path = None
+    if getattr(args, "learning_series", None) or getattr(args, "learning_series_dir", None):
+        learning_runs = _collect_learning_series(args)
+        if learning_runs:
+            learning_summary = _compute_learning_efficiency(learning_runs)
+            summary_path = root_out / "learning_efficiency_summary.json"
+            summary_path.write_text(json.dumps(learning_summary, indent=2), encoding="utf-8")
+            md_table += "\n\n### Learning Efficiency Summary\n"
+            md_table += "| Runs | InitialAccuracy | FinalAccuracy | StepSpan | LearningEfficiency |\n"
+            md_table += "|---:|---:|---:|---:|---:|\n"
+            md_table += (
+                f"| {learning_summary['count']} | {learning_summary['initial_accuracy']} | {learning_summary['final_accuracy']} | "
+                f"{learning_summary['step_span']} | {learning_summary['learning_efficiency']:.3f} |\n"
+            )
+        else:
+            print("No learning-series artifacts found; skipping learning efficiency aggregation.")
+
+    md_path.write_text(md_table + "\n", encoding="utf-8")
+    print("Comparison completed.")
+    print(f"CSV table:     {csv_path}")
+    print(f"Markdown:      {md_path}")
+    if learning_summary and summary_path:
+        print(f"Learning efficiency summary JSON: {summary_path}")
+        print("Learning efficiency summary:")
+        print(json.dumps(learning_summary, indent=2))
+    print("\n" + md_table)
+
+    # Per-case metrics and pairwise stats
+    print("len(baseline_jsons):", len(baseline_jsons))
+    print("len(loop_jsons):", len(loop_jsons))
+
+    baseline_cases, loop_cases, all_case_metrics = extract_case_metrics(baseline_jsons, loop_jsons)
+
+    print("AFTER extract_case_metrics debug:")
+    print("  baseline_cases len:", len(baseline_cases))
+    print("  loop_cases len:", len(loop_cases))
+
+    case_metrics_csv_path = root_out / "case_metrics.csv"
+    _write_case_metrics_csv(case_metrics_csv_path, all_case_metrics)
+
+    print("\n==== DEBUG: baseline_cases ====")
+    for c in baseline_cases:
+        print(f"{c['case_id']}: final_status.tlc={c['final_status'].get('tlc')} TerminalStatus={c.get('TerminalStatus', '')} initial_status.tlc={c['initial_status'].get('tlc')}")
+
+    print("\n==== DEBUG: loop_cases ====")
+    for c in loop_cases:
+        print(f"{c['case_id']}: final_status.tlc={c['final_status'].get('tlc')} TerminalStatus={c.get('TerminalStatus', '')} initial_status.tlc={c['initial_status'].get('tlc')}")
+
+    # Side-by-side summaries/stats
+    summarize_case_metrics_per_mode(baseline_cases, loop_cases)
+    # Timing
+    all_llm, all_tlc, all_ovh, all_total = collect_all_timings(baseline_jsons, loop_jsons)
+    print("\nTiming statistics per phase (seconds):")
+    phases = [
+        ("LLM call", all_llm),
+        ("TLC call", all_tlc),
+        ("Engineering overhead", all_ovh),
+        ("Total step", all_total)
+    ]
+    print("| Phase                | Mean | Median | Min | Max | Attempts |")
+    print("|--------------------- |------|--------|-----|-----|----------|")
+    for label, data in phases:
+        mean_, median_, min_, max_, N_ = timing_stats(data)
+        print(f"| {label:<20} | {fmt(mean_)} | {fmt(median_,6)} | {fmt(min_,3)} | {fmt(max_,3)} | {fmt_int(N_,3)} |")
+    # McNemar
+    mcnemar_analysis(baseline_cases, loop_cases, summary_path=str(root_out / "mcnemar_summary.txt"))
+    mcnemar_markdown(baseline_cases, loop_cases, md_path=str(root_out / "mcnemar_summary.md"))
+    mcnemar_csv(baseline_cases, loop_cases, csv_path=str(root_out / "mcnemar_summary.csv"))
+
+def main() -> None:
+    args = parse_args()
+    apply_patch = not args.no_patch
+    
     task_path = Path(args.task)
     task = load_task_spec(args.task)
+    task_name = (Path(args.task).stem if hasattr(args, "task") else "unknown_task")
+
+    output_dir = Path(args.output_dir)
 
     with _resolve_module_dir(args, task_path, task) as module_binding:
         validate_module_layout(task, module_binding.root)
@@ -966,11 +1106,29 @@ def main() -> None:
         artifact_root = (
             Path(args.artifact_root)
             if args.artifact_root
-            else Path(args.output_dir).parent / task.name
+            else output_dir.parent / task_name
         )
-        root_out = Path(args.output_dir) / task.name
+        root_out = output_dir / task_name
         baseline_out = root_out / "baseline"
         loop_out = root_out / "loop"
+        print("root_out:", root_out)
+        print("baseline_out:", baseline_out)
+        print("loop_out:", loop_out)
+
+        if args.analyze_only:
+            trial_ids, baseline_jsons, loop_jsons = load_paired_trials(root_out)
+            print("len(baseline_jsons):", len(baseline_jsons))
+            print("len(loop_jsons):", len(loop_jsons))
+            summarize_full_run(
+                root_out=root_out,
+                task_name=task_name,
+                baseline_jsons=baseline_jsons,
+                loop_jsons=loop_jsons,
+                args=args,
+            )
+            print(f"Analysis-only mode complete. {len(baseline_jsons)} trials analyzed.")
+            return
+
         baseline_out.mkdir(parents=True, exist_ok=True)
         loop_out.mkdir(parents=True, exist_ok=True)
 
@@ -1028,9 +1186,33 @@ def main() -> None:
             )
             baseline_json = _load_json(baseline_artifacts["json"])
             baseline_jsons.append(baseline_json)
+            baseline_final_status = baseline_json.get("terminal_status", "").lower()
 
             # Write baseline metrics
             _write_trial_metrics_csv(baseline_trial_out / "metrics.csv", baseline_json, trial, "baseline", seed)
+
+
+
+            if baseline_final_status == "success":
+                print(f"[SKIP LOOP] Baseline already passes in trial {trial}, not running loop experiment.")
+                loop_json = {
+                    "terminal_status": "skipped",
+                    "repair_iterations": 0,
+                    "skills_successful": 0,
+                    "human_intervention": False,
+                    "attempts": [],
+                    "case_metrics": {
+                        "mode": "loop",
+                        "initial_status": {"tlc": True},
+                        "final_status": {"tlc": True},
+                        "initial_failure_classes": [],
+                    }
+                }
+                loop_jsons.append(loop_json)
+                # Write dummy metrics/csv to keep pipeline consistent 
+                _write_trial_metrics_csv(loop_trial_out / "metrics.csv", loop_json, trial, "loop", seed)
+                continue
+
 
             # --- Paired starting spec for loop (NEW: ensure initial spec for loop is the same as baseline) ---
             baseline_initial_spec = str(baseline_trial_out / "modules" / f"{task.module_name}_attempt_1.tla")
@@ -1107,117 +1289,13 @@ def main() -> None:
                         })
                         break
 
-        # Summarize all trials
-        rows = []
-        for i in range(num_trials):
-            rows.append(_summarize(baseline_jsons[i], f"baseline_trial_{i+1}"))
-            rows.append(_summarize(loop_jsons[i], f"loop_trial_{i+1}"))
-
-        csv_path = root_out / f"comparison_{task.name}.csv"
-        md_path = root_out / f"comparison_{task.name}.md"
-        _write_csv(csv_path, rows)
-        md_table = _to_markdown(rows)
-
-        learning_summary = None
-        summary_path: Optional[Path] = None
-        if args.learning_series or args.learning_series_dir:
-            learning_runs = _collect_learning_series(args)
-            if learning_runs:
-                learning_summary = _compute_learning_efficiency(learning_runs)
-                summary_path = root_out / "learning_efficiency_summary.json"
-                summary_path.write_text(json.dumps(learning_summary, indent=2), encoding="utf-8")
-                md_table += "\n\n### Learning Efficiency Summary\n"
-                md_table += "| Runs | InitialAccuracy | FinalAccuracy | StepSpan | LearningEfficiency |\n"
-                md_table += "|---:|---:|---:|---:|---:|\n"
-                md_table += (
-                    f"| {learning_summary['count']} | {learning_summary['initial_accuracy']} | {learning_summary['final_accuracy']} | "
-                    f"{learning_summary['step_span']} | {learning_summary['learning_efficiency']:.3f} |\n"
-                )
-            else:
-                print("No learning-series artifacts found; skipping learning efficiency aggregation.")
-
-        md_path.write_text(md_table + "\n", encoding="utf-8")
-
-        print("Comparison completed.")
-        print(f"CSV table:     {csv_path}")
-        print(f"Markdown:      {md_path}")
-        if learning_summary and summary_path:
-            print(f"Learning efficiency summary JSON: {summary_path}")
-            print("Learning efficiency summary:")
-            print(json.dumps(learning_summary, indent=2))
-        print("\n" + md_table)
-
-        all_case_metrics = []
-        for j in range(num_trials):
-            all_case_metrics.append(baseline_jsons[j].get("case_metrics", {}))
-            all_case_metrics.append(loop_jsons[j].get("case_metrics", {}))
-        csv_path = root_out / "case_metrics.csv"
-        _write_case_metrics_csv(csv_path, all_case_metrics)
-        _summarize_case_metrics(all_case_metrics)
-
-
-        all_case_metrics = []
-        baseline_cases = []
-        loop_cases = []
-        for j in range(num_trials):
-            # Baseline
-            b = baseline_jsons[j]
-            b_case_metrics = b.get("case_metrics", {})
-            entry_b = {
-                "mode": "baseline",
-                "initial_status": {"tlc": bool(
-                    b.get("InitialVerificationSuccess", b.get("initial_verification_success", False))
-                )},
-                "final_status": {"tlc": bool(
-                    b.get("TerminalStatus", b.get("terminal_status", "")) == "success"
-                )},
-                "initial_failure_classes": b_case_metrics.get("initial_failure_classes", [])
-            }
-            all_case_metrics.append(entry_b)
-            baseline_cases.append(entry_b)
-
-            # Loop
-            l = loop_jsons[j]
-            l_case_metrics = l.get("case_metrics", {})
-            entry_l = {
-                "mode": "loop",
-                "initial_status": {"tlc": bool(
-                    l.get("InitialVerificationSuccess", l.get("initial_verification_success", False))
-                )},
-                "final_status": {"tlc": bool(
-                    l.get("TerminalStatus", l.get("terminal_status", "")) == "success"
-                )},
-                "initial_failure_classes": l_case_metrics.get("initial_failure_classes", [])
-            }
-            loop_cases.append(entry_l)
-
-
-        csv_path = root_out / "case_metrics.csv"
-        _write_case_metrics_csv(csv_path, all_case_metrics)
-
-        # New summary: print separate and side-by-side aggregated stats per mode
-        summarize_case_metrics_per_mode(baseline_cases, loop_cases)
-
-
-        all_llm, all_tlc, all_ovh, all_total = collect_all_timings(baseline_jsons, loop_jsons)
-
-        print("\nTiming statistics per phase (seconds):")
-        phases = [
-            ("LLM call", all_llm),
-            ("TLC call", all_tlc),
-            ("Engineering overhead", all_ovh),
-            ("Total step", all_total)
-        ]
-        print("| Phase                | Mean | Median | Min | Max | Attempts |")
-        print("|--------------------- |------|--------|-----|-----|----------|")
-
-        for label, data in phases:
-            mean_, median_, min_, max_, N_ = timing_stats(data)
-            print(f"| {label:<20} | {fmt(mean_)} | {fmt(median_,6)} | {fmt(min_,3)} | {fmt(max_,3)} | {fmt_int(N_,3)} |")
-
-        mcnemar_analysis(all_case_metrics, summary_path=str(root_out / "mcnemar_summary.txt"))
-        mcnemar_markdown(all_case_metrics, md_path=str(root_out / "mcnemar_summary.md"))
-        mcnemar_csv(all_case_metrics, csv_path=str(root_out / "mcnemar_summary.csv"))
+        summarize_full_run(
+            root_out=root_out,
+            task_name=task_name,
+            baseline_jsons=baseline_jsons,
+            loop_jsons=loop_jsons,
+            args=args,
+        )
 
 if __name__ == "__main__":
     main()

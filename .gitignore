@@ -80,3 +80,5 @@ agentic_loop/plans/*
 agentic_loop/tests/__pycache__/*
 agentic_loop/src/__pycache__/*
 agentic_loop/modules/*
+agentic_loop/figures/*
+agentic_loop/tasks/beginner/*

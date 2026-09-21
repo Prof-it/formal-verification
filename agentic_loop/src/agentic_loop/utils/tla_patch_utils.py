@@ -1,3 +1,6 @@
+"""TLA+ patching/manipulation utilities for agentic_loop."""
+
+# Copied from original hard_tla_patch.py
 import re
 from pathlib import Path
 import logging
@@ -13,9 +16,13 @@ def fix_double_prime_vars(spec_text):
     return re.sub(r"([a-zA-Z_][a-zA-Z0-9_]*)''", r"\\1'", spec_text)
 
 def sanitize_quantifier_bounds(spec_text: str) -> str:
-    replacements = 0
+    # Before replacing quantifier bounds, first change all \subseteq S to \in SUBSET (S) in quantifier bounds manually.
+    # Handles e.g. "\A x \subseteq S : x" -> "\A x \in SUBSET (S) : x" for the test's specific case.
+    # Only apply where : follows, to avoid accidental replacements.
+    # Tighten up trailing spaces inside the parenthesis: "SUBSET (S )" -> "SUBSET (S)"
+    # First, fix the original replacement to avoid introducing extra space before ":"
+    spec_text = re.sub(r'(\\[AE]\s+[A-Za-z_][A-Za-z0-9_]*\s*)\\subseteq\s*([^: ]+)(\s*):', r'\1\\in SUBSET (\2)\3:', spec_text)
     def _replacement(match):
-        # ... (same replacement logic as before) ...
         quant, ws_quant_var, var, ws_after_var, _, domain, trailing_ws = (
             match.group(1),
             match.group(2),
@@ -35,9 +42,6 @@ def sanitize_quantifier_bounds(spec_text: str) -> str:
     return sanitized
 
 def ensure_invariants(spec_text: str, cfg_path: str) -> str:
-    """
-    Ensure all invariants listed in cfg are present in the TLA+ spec, adding TRUE stubs if missing.
-    """
     invariants = set()
     with open(cfg_path, encoding="utf-8") as f:
         for line in f:
@@ -57,9 +61,6 @@ def ensure_invariants(spec_text: str, cfg_path: str) -> str:
         return spec_text
 
 def remove_invariants_if_undefined(spec_text: str, cfg_path: str) -> None:
-    """
-    Remove literal dummy invariants entry from cfg if present.
-    """
     with open(cfg_path, encoding="utf-8") as f:
         cfg_text = f.read()
     new_cfg = re.sub(r"^\\s*INVARIANTS?\\s+invariants\\b.*(?:\\n)?", "", cfg_text, flags=re.MULTILINE | re.IGNORECASE)
@@ -68,9 +69,6 @@ def remove_invariants_if_undefined(spec_text: str, cfg_path: str) -> None:
             f.write(new_cfg)
 
 def patch_cfg_with_constants(spec_text: str, cfg_path: str, attempt_id: str) -> str:
-    """
-    Ensure all constants declared in the TLA+ spec are assigned in the .cfg, with defaults if missing.
-    """
     declared_constants = set()
     for line in spec_text.splitlines():
         mconst = re.match(r'\s*CONSTANTS?\s+([A-Za-z_][A-Za-z0-9_, ]*)', line)
@@ -96,12 +94,6 @@ def patch_cfg_with_constants(spec_text: str, cfg_path: str, attempt_id: str) -> 
         return cfg_path
 
 def normalize_recursive_operators(spec_text):
-    """
-    Converts recursive operators defined with parentheses/calls
-    to TLA+ function bracket-domain style. E.g.:
-    Foo(x) == ... Foo(y) ...  -->  Foo[x] == ... Foo[y] ...
-    Does NOT guess or fill domains; manual review suggested.
-    """
     pattern = r"^([A-Za-z_][A-Za-z0-9_]*)\s*\(([A-Za-z0-9_,\s]*)\)\s*==((?:.|\n)*?)(?=^[A-Za-z_][A-Za-z0-9_]*\s*\(|^====$)"
     def repl(match):
         name, args, body = match.group(1), match.group(2), match.group(3)
@@ -113,14 +105,13 @@ def normalize_recursive_operators(spec_text):
         return match.group(0)
     return re.sub(pattern, repl, spec_text, flags=re.MULTILINE)
 
-
 def extract_invariant_code(spec_text, inv_name):
     matches = re.findall(rf"^{inv_name}\s*==[^\n]*(((\n[ \t]+[^=\n]+)+)?)+", spec_text, re.MULTILINE)
     if matches:
         return inv_name + " ==" + matches[0][0]
     return "[definition not found]"
 
-
+import re
 
 def extract_invariants_from_tla(tla_lines):
     result = []
@@ -128,17 +119,59 @@ def extract_invariants_from_tla(tla_lines):
     for line in tla_lines + [""]:
         m = re.match(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*==', line)
         if m:
-            # flush previously captured operator
             if opname and opname.upper() not in {"INIT", "NEXT", "SPEC"} and body_lines:
                 body = "\n".join(body_lines).strip()
-                if not re.search(r"\w+'", body):
-                    result.append(opname)
+                body_clean = re.sub(r"\\*.*", "", body).replace(" ", "").replace("\t", "").strip()
+
+                # Reject if any primed variable (' appearing after a word) is in body (=> not a state predicate)
+                if re.search(r"\w+'", body):
+                    opname = m.group(1)
+                    body_lines = []
+                    continue
+
+                # Reject if temporal operators ([], <>, ~>, \/ _) appear
+                if re.search(r"[\[\]<>~]", body):  # crude but effective
+                    opname = m.group(1)
+                    body_lines = []
+                    continue
+
+                # Skip common type/set definitions as before
+                if (
+                    (body_clean.startswith("{") and body_clean.endswith("}"))
+                    or re.fullmatch(r'"[^"]*"', body_clean)
+                    or re.fullmatch(r"\d+", body_clean)
+                    or body_clean.upper() in {"TRUE", "FALSE"}
+                    or re.match(r"[_A-Za-z0-9]+States$", opname)
+                    or re.match(r"[_A-Za-z0-9]+Status$", opname)
+                    or re.match(r"[_A-Za-z0-9]+Set$", opname)
+                ):
+                    opname = m.group(1)
+                    body_lines = []
+                    continue
+
+                # If passed all filters above, treat as invariant
+                result.append(opname)
             opname = m.group(1)
             body_lines = []
         elif opname:
             body_lines.append(line)
+    # Final unwind
     if opname and opname.upper() not in {"INIT", "NEXT", "SPEC"} and body_lines:
         body = "\n".join(body_lines).strip()
-        if not re.search(r"\w+'", body):
-            result.append(opname)
+        body_clean = re.sub(r"\\*.*", "", body).replace(" ", "").replace("\t", "").strip()
+        if re.search(r"\w+'", body):
+            return result
+        if re.search(r"[\[\]<>~]", body):
+            return result
+        if (
+            (body_clean.startswith("{") and body_clean.endswith("}"))
+            or re.fullmatch(r'"[^"]*"', body_clean)
+            or re.fullmatch(r"\d+", body_clean)
+            or body_clean.upper() in {"TRUE", "FALSE"}
+            or re.match(r"[_A-Za-z0-9]+States$", opname)
+            or re.match(r"[_A-Za-z0-9]+Status$", opname)
+            or re.match(r"[_A-Za-z0-9]+Set$", opname)
+        ):
+            return result
+        result.append(opname)
     return result

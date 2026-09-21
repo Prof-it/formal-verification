@@ -4,7 +4,7 @@ def parse_tlc_trace(tlc_output: str):
     lines = tlc_output.splitlines()
     violated_invariant = None
     for line in lines:
-        m = re.match(r"^Invariant (\\w+) is violated", line)
+        m = re.match(r"^Invariant (\w+) is violated", line)
         if m:
             violated_invariant = m.group(1)
             break
@@ -19,11 +19,11 @@ def parse_tlc_trace(tlc_output: str):
     for line in lines[trace_start+1:]:
         if line.strip() == "" or line.startswith("Finished"):
             break
-        trace_lines.append(line)
+        trace_lines.append(line.strip())
     return {
         "violated_invariant": violated_invariant,
         "trace_lines": trace_lines,
-        "raw_trace": "\\n".join(trace_lines)
+        "raw_trace": "\n".join(trace_lines)
     }
 
 def tlc_trace_to_markdown_table(trace_lines):

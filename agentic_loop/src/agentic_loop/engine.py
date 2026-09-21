@@ -7,54 +7,43 @@ from typing import Callable, Dict, Optional
 from .models import AttemptRecord, LoopConfig, RunResult, TaskSpec
 from .prompting import load_prompt_template, render_prompt
 from .providers import LLMProvider
-from .reporting import persist_run_result
+from .reporting import persist_run_result, write_violation_report
 from .tlc_runner import run_tlc
 
+import logging
 import json
-import shutil
 import time
 import os
 import re
 import random
 import numpy as np
-import logging
-
-from .stats_utils import PurgeStats
-from .utils import print_source_with_line_numbers, is_multi_operator_issue
-from .io_utils import (
+from .utils.io_utils import (
     save_tlc_log, 
-    write_violation_report,
     load_skills, 
     _coerce_module_dir,
-    _resolve_task_artifact,
     validate_module_layout,
     _write_module,
     generate_cfg_for_tla,
     generate_cfg_via_llm,
     get_failure_classes_from_attempt
     )
-from .tlc_error_utils import classify_tlc_error
-from .trace_utils import parse_tlc_trace
-from .llm_error_analysis import llm_analyze_tlc_error
-from .repair_utils import (
-    is_multi_operator_issue,
+from .utils.tlc_error_utils import classify_tlc_error
+from .utils.trace_utils import parse_tlc_trace
+from .utils.repair_utils import (
     clear_skill_attempt_session,
-    get_recursively_defined_functions,
     try_register_candidate_rule, 
     apply_known_skill
 )
-from .llm_policy_utils import first_undefined_operator
+from .utils.llm_policy_utils import first_undefined_operator
+from .utils.llm_error_analysis import llm_analyze_tlc_error
 from .user_approval_utils import prompt_human_for_skill_approval
-from .utils.hard_tla_patch import (
-    fix_double_prime_vars,
+from .utils.tla_patch_utils import (
     sanitize_quantifier_bounds,
-    ensure_invariants,
     remove_invariants_if_undefined,
     patch_cfg_with_constants,
-    normalize_recursive_operators,
-    extract_invariants_from_tla,
     extract_invariant_code,
 )
+from .utils.general_utils import print_source_with_line_numbers, is_multi_operator_issue
 
 MAX_SUGGESTIONS = 2
 
@@ -182,7 +171,7 @@ def run_experiment(
 
         if apply_patch:
             # Standard deterministic config gen logic:
-            bootstrap_cfg_path = Path(__file__).resolve().parent.parent / "default_bootstrap/BootstrapModule.cfg"
+            bootstrap_cfg_path = Path(__file__).resolve().parent.parent.parent / "default_bootstrap/BootstrapModule.cfg"
             out_cfg_path = module_dir / f"{snapshot_name}.cfg"
             generated_cfg_path = generate_cfg_for_tla(str(module_snapshot), str(bootstrap_cfg_path), str(out_cfg_path))
             remove_invariants_if_undefined(latest_spec, str(generated_cfg_path))
@@ -216,7 +205,8 @@ def run_experiment(
 
 
         # Checkpoint gated: if enabled and TLC passes, break early (loop mode only)
-        if checkpoint_gated and mode == "loop" and tlc.status == "success":
+        if tlc.status == "success":
+            print("[DEBUG] Using new TLC-pass gate logic!")
             result.terminal_status = tlc.status
             attempt_record = AttemptRecord(
                 attempt_id=attempt_id,

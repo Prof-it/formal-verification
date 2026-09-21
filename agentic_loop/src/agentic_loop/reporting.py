@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 
 from .models import RunResult
-
+from .utils.trace_utils import parse_tlc_trace, tlc_trace_to_markdown_table
 
 def _serialize_skills(skills: List[str]) -> str:
     return ",".join(skills)
@@ -68,3 +68,33 @@ def persist_run_result(run: RunResult, output_dir: str) -> Dict[str, str]:
             writer.writerow(row)
 
     return {"json": str(json_path), "csv": str(csv_path)}
+
+def write_violation_report(
+        report_path, attempt_id, violated_inv, tla_inv_code, nl_req, trace, trace_lines,
+        skill, tlc_log_path, llm_explanation=None, llm_plan=None):
+    Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(f"# TLC Error/Violation Report\n\n")
+        f.write(f"**Attempt:** {attempt_id}\n\n")
+        f.write(f"**Detected Error Type (Skill):** `{skill['key']}`\n")
+        f.write(f"**Skill Strategy:** {skill['strategy']}\n\n")
+        f.write("## TLC Log File\n")
+        f.write(f"[Full TLC log for this attempt]({tlc_log_path})\n\n")
+        if violated_inv:
+            f.write(f"**Violated Invariant:** `{violated_inv}`\n\n")
+        f.write("## Invariant Definition\n")
+        f.write(f"```tla\n{tla_inv_code}\n```\n")
+        f.write("## Original Natural Language Requirement\n")
+        f.write(f"{nl_req}\n\n")
+        if trace_lines:
+            f.write("## TLC Violation Trace (Markdown Table)\n")
+            f.write(tlc_trace_to_markdown_table(trace_lines) + "\n\n")
+        if trace:
+            f.write("## TLC Raw Trace\n")
+            f.write("```\n" + trace + "\n```\n")
+        if llm_explanation:
+            f.write("## LLM Explanation/Diagnosis\n")
+            f.write(llm_explanation + "\n\n")
+        if llm_plan:
+            f.write("## LLM-Generated Repair Plan\n")
+            f.write(llm_plan + "\n\n")

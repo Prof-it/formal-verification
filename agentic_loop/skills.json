@@ -36,21 +36,39 @@
     "suggested_skill": "Replace all appearances of 'Subset(p)' with 'SUBSET p'. The 'SUBSET' keyword is the standard TLA+ operator to return the power set of a set. For example, change: 'Subset(p)' to 'SUBSET p'. Also, revise related expressions, e.g.\n\nOld:\n  WeightSet(p) == {Sum(S) : S \\in Subset(p)}\nNew:\n  WeightSet(p) == {Sum(S) : S \\in SUBSET p}"
   },
   {
-    "pattern": "Encountered \"<EOF>\" at line \\d+, column \\d+ and token \"\\)\"",
-    "key": "Encountered \"<EOF>\" at line \\d+, column \\d+ and token \"\\)\"",
-    "strategy": "Add '====' end module.",
-    "suggested_skill": "Ensure the TLA+ module ends with '====' to properly terminate the module body. Add this line at the end if missing."
-  },
-  {
     "pattern": "Unknown operator: [`']?([A-Za-z_][A-Za-z0-9_]*)[`']?",
     "key": "Unknown operator: `GENERIC_FN`",
     "strategy": "Define missing recursive function as bracket-domain.",
     "suggested_skill": "If '{fn}' is intended as a recursive function over sets or sequences, define it using the domain bracket notation, not as an operator. Example patterns:\n\nFor sequences:\n  {fn}[seq \\in Seq(Int)] == IF seq = <<>> THEN 0 ELSE Head(seq) + {fn}[Tail(seq)]\n\nFor sets:\n  {fn}[S \\in SUBSET Int] == IF S = {} THEN 0 ELSE LET x == CHOOSE y \\in S: TRUE IN x + {fn}[S \\ {x}]\n\nReplace all calls of '{fn}(...)' in your code with '{fn}[...]'. Ensure all usages and definitions are aligned with this style. No RECURSIVE needed for function-definition style."
   },
   {
-    "pattern": "Encountered \"<EOF>\" at line \\d+, column \\d+ and token \">>\"",
+    "pattern": "Encountered \"<EOF>\" at line \\d+, column \\d+ and token .*(\\)|>>|\"\")|missing_module_delimiter|missing_end_of_module",
     "key": "missing_module_delimiter",
     "strategy": "Add the missing '====' delimiter at the end of the module.",
     "suggested_skill": "Ensure that the TLA+ module ends with the '====' delimiter. Add '====' at the end of the file to properly close the module."
+  },
+  {
+    "pattern": "File name '.*' does not match the name '.*' of the top level module it contains.",
+    "key": "file_module_name_mismatch",
+    "strategy": "Rename the file to match the module name.",
+    "suggested_skill": "Rename the file to match the module name declared in the TLA+ specification."
+  },
+  {
+    "pattern": "Encountered \"Beginning of definition\" at line \\d+, column \\d+ and token \"\\\\\"",
+    "key": "parse_error_if_then_else",
+    "strategy": "Ensure all IF-THEN-ELSE structures are properly closed with an ELSE clause.",
+    "suggested_skill": "Modify the DDMR26 invariant to include an ELSE clause that handles all cases, such as: DDMR26 == \\A i \\in 1..N: IF mode[i] = \"RTC\" THEN latchPawlPosition[i] = \"unlatched\" ELSE IF mode[i] = \"RTR\" THEN latchPawlPosition[i] = \"latched\" ELSE IF mode[i] = \"secondaryRelease\" THEN latchPawlPosition[i] = \"unlatched\" ELSE TRUE"
+  },
+  {
+    "pattern": "Encountered \"->\" at line \\d+, column \\d+ and token \"N\"",
+    "key": "parse_error_unexpected_arrow",
+    "strategy": "Correct the syntax for the CONSTANT declaration.",
+    "suggested_skill": "Replace 'CONSTANT N \\* Number of latches' with 'CONSTANT N \\* Number of latches' and ensure that 'N' is properly defined or used without '->'."
+  },
+  {
+    "pattern": "Attempted to enumerate a set of the form \\[D -> R\\],but the range R:\\s*Nat\\s*cannot be enumerated.",
+    "key": "infinite_set_enumeration_error",
+    "strategy": "Restrict the range of 'currentDraw' to a finite subset of Nat.",
+    "suggested_skill": "Modify the definition of 'currentDraw' to use a finite subset of Nat, such as 0..MAX_CURRENT, where MAX_CURRENT is a constant representing the maximum expected current draw."
   }
 ]

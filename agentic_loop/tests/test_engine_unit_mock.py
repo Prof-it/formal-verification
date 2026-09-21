@@ -4,31 +4,40 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-# Make agentic_loop/src importable when running from the tests directory.
-SRC_DIR = Path(__file__).parent.parent / "src"
-if SRC_DIR.exists() and str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
 
-from agentic_loop.engine import (
+
+# --- Ensure 'src' is importable for tests and static analyzers.
+# For correct Pylance support in VSCode, also add this to your workspace ".env" or "settings.json":
+#   PYTHONPATH=${workspaceFolder}/agentic_loop/src
+# Only inject src into sys.path if import fails at runtime, and ensure the normalized resolved path is used.
+SRC_DIR = (Path(__file__).resolve().parents[1] / "src").resolve()
+try:
+    import agentic_loop  # noqa: F401
+except ImportError:
+    src_str = str(SRC_DIR)
+    sys_path_normalized = [str(Path(p).resolve()) for p in sys.path]
+    if src_str not in sys_path_normalized:
+        sys.path.insert(0, src_str)
+
+from agentic_loop.utils.io_utils import (
     _write_module,
     _coerce_module_dir,
-    sanitize_quantifier_bounds,
-    classify_tlc_error,
-    extract_invariant_code,
-    parse_tlc_trace,
-    run_experiment,
-    save_tlc_log,
-)
-from agentic_loop.models import LoopConfig, TaskSpec
-from agentic_loop.tlc_runner import TLCResult
-from agentic_loop.utils.tla_patch_utils import remove_invariants_if_undefined
-from agentic_loop.utils.trace_utils import tlc_trace_to_markdown_table
-from agentic_loop.utils.io_utils import  (
     save_tlc_log,
     purge_temp_modules,
-    
 )
-
+from agentic_loop.utils.tla_patch_utils import (
+    sanitize_quantifier_bounds,
+    extract_invariant_code,
+)
+from agentic_loop.utils.tlc_error_utils import classify_tlc_error
+from agentic_loop.utils.trace_utils import (
+    parse_tlc_trace,
+    tlc_trace_to_markdown_table,
+)
+from agentic_loop.engine import run_experiment
+from agentic_loop.utils.stats_utils import PurgeStats
+from agentic_loop.models import LoopConfig, TaskSpec
+from agentic_loop.tlc_runner import TLCResult
 
 
 class DummyProvider:
@@ -177,14 +186,16 @@ class EngineUnitTests(unittest.TestCase):
                 errors=["invariant_violation"],
             )
 
-            with patch("agentic_loop.engine.load_prompt_template", return_value="template"), patch(
-                "agentic_loop.engine.render_prompt", return_value="prompt"
-            ), patch("agentic_loop.engine.run_tlc", return_value=tlc_result), patch(
-                "agentic_loop.engine.load_skills",
-                return_value=[{"key": "inv", "strategy": "repair", "pattern": "violated"}],
-            ), patch("agentic_loop.engine.save_tlc_log", return_value="results/logs/mock.txt"), patch(
-                "agentic_loop.engine.persist_run_result"
-            ) as persist_mock, patch("agentic_loop.engine.write_violation_report") as report_mock:
+            with patch("agentic_loop.engine.load_prompt_template", return_value="template"), \
+                 patch("agentic_loop.engine.render_prompt", return_value="prompt"), \
+                 patch("agentic_loop.engine.run_tlc", return_value=tlc_result), \
+                 patch("agentic_loop.engine.load_skills", return_value=[{"key": "inv", "strategy": "repair", "pattern": "violated"}]), \
+                 patch("agentic_loop.engine.save_tlc_log", return_value="results/logs/mock.txt"), \
+                 patch("agentic_loop.engine.persist_run_result") as persist_mock, \
+                 patch("agentic_loop.engine.write_violation_report") as report_mock, \
+                 patch("agentic_loop.engine.generate_cfg_for_tla", return_value="dummy.cfg"), \
+                 patch("agentic_loop.engine.remove_invariants_if_undefined", return_value=None), \
+                 patch("agentic_loop.engine.patch_cfg_with_constants", return_value="dummy.cfg"):
                 persist_mock.return_value = {"json": "out.json", "csv": "out.csv"}
                 artifacts = run_experiment(
                     task=task,

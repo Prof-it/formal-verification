@@ -5,11 +5,22 @@ import logging
 import shutil
 
 from agentic_loop.models import TaskSpec
-from agentic_loop.stats_utils import PurgeStats
-from agentic_loop.utils.hard_tla_patch import extract_invariants_from_tla
-from .trace_utils import parse_tlc_trace, tlc_trace_to_markdown_table
-from .prompting import load_prompt_template, render_prompt
+from agentic_loop.utils.stats_utils import PurgeStats
+from agentic_loop.utils.tla_patch_utils import extract_invariants_from_tla
+from agentic_loop.prompting import load_prompt_template, render_prompt
 from .tlc_error_utils import classify_tlc_error
+
+from pathlib import Path
+
+def find_src_root(path):
+    f = Path(path).resolve()
+    while f.name != "src":
+        f = f.parent
+    return f
+
+src_root = find_src_root(__file__)
+bootstrap_cfg_template = src_root / "default_bootstrap/BootstrapModule.cfg"
+bootstrap_tla_template = src_root / "default_bootstrap/BootstrapModule.tla"
 
 def save_tlc_log(log_dir, attempt_id, tlc_output):
     log_dir = Path(log_dir)
@@ -72,14 +83,12 @@ def validate_module_layout(task: TaskSpec, module_dir: Path | str) -> None:
     root = _coerce_module_dir(module_dir)
 
     # Always copy the bootstrap .cfg template to the destination
-    bootstrap_cfg_template = Path(__file__).resolve().parent.parent / "default_bootstrap/BootstrapModule.cfg"
     cfg_target = root / task.cfg_file
     cfg_target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(bootstrap_cfg_template, cfg_target)
     logging.info(f"[Bootstrap] Copied .cfg config from template at {cfg_target}")
 
     # Always copy the bootstrap .tla template, with MODULE header rewritten
-    bootstrap_tla_template = Path(__file__).resolve().parent.parent / "default_bootstrap/BootstrapModule.tla"
     tla_target = root / f"{task.module_name}.tla"
     with open(bootstrap_tla_template, "r", encoding="utf-8") as src:
         content = src.read()
@@ -101,26 +110,6 @@ def validate_module_layout(task: TaskSpec, module_dir: Path | str) -> None:
         logging.warning(
             f"Optional manifest.json not found in module directory '{root}'."
         )
-
-
-def _write_module(module_dir: Path | str, module_name: str, spec_text: str, attempt_id: int) -> Path:
-    """Ensure MODULE header matches snapshot filename."""
-    module_dir = Path(module_dir)
-    snapshot_name = f"{module_name}_attempt_{attempt_id}"
-    snapshot_path = module_dir / f"{snapshot_name}.tla"
-    lines = spec_text.strip().splitlines()
-    if lines:
-        lines[0] = f"---- MODULE {snapshot_name} ----"
-    fixed_body = "\n".join(lines)
-    # Save to latest main (optional, for backwards compat)
-    target = module_dir / f"{module_name}.tla"
-    target.write_text(fixed_body + "\n", encoding="utf-8")
-    # Save to snapshot with correct header
-    snapshot_path.write_text(fixed_body + "\n", encoding="utf-8")
-    logging.info(
-        f"[ModuleWrite] attempt={attempt_id} target={target} snapshot={snapshot_path}"
-    )
-    return snapshot_path
 
 
 
@@ -215,33 +204,7 @@ def generate_cfg_for_tla(tla_path, bootstrap_cfg_path, out_cfg_path):
 
 
 
-def write_violation_report(report_path, attempt_id, violated_inv, tla_inv_code, nl_req, trace, trace_lines, skill, tlc_log_path, llm_explanation=None, llm_plan=None):
-    Path(report_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(f"# TLC Error/Violation Report\n\n")
-        f.write(f"**Attempt:** {attempt_id}\n\n")
-        f.write(f"**Detected Error Type (Skill):** `{skill['key']}`\n")
-        f.write(f"**Skill Strategy:** {skill['strategy']}\n\n")
-        f.write("## TLC Log File\n")
-        f.write(f"[Full TLC log for this attempt]({tlc_log_path})\n\n")
-        if violated_inv:
-            f.write(f"**Violated Invariant:** `{violated_inv}`\n\n")
-        f.write("## Invariant Definition\n")
-        f.write(f"```tla\n{tla_inv_code}\n```\n")
-        f.write("## Original Natural Language Requirement\n")
-        f.write(f"{nl_req}\n\n")
-        if trace_lines:
-            f.write("## TLC Violation Trace (Markdown Table)\n")
-            f.write(tlc_trace_to_markdown_table(trace_lines) + "\n\n")
-        if trace:
-            f.write("## TLC Raw Trace\n")
-            f.write("```\n" + trace + "\n```\n")
-        if llm_explanation:
-            f.write("## LLM Explanation/Diagnosis\n")
-            f.write(llm_explanation + "\n\n")
-        if llm_plan:
-            f.write("## LLM-Generated Repair Plan\n")
-            f.write(llm_plan + "\n\n")
+
 
 def generate_cfg_via_llm(module_snapshot, task, provider, attempt_id, prompts_dir, cfg_generation_template=None):
     """
@@ -283,3 +246,43 @@ def get_failure_classes_from_attempt(attempt):
     # Always surface unknown key now
     return [key] if key else []
 
+def _write_module(module_dir, module_name, spec_text, attempt_id):
+    """
+    Write the module TLA+ spec to disk as a snapshot, returning the path.
+    Also robustly rewrites or inserts the MODULE header to indicate attempt and 
+    updates the latest .tla file to match.
+    """
+    module_dir = Path(module_dir)
+    module_dir.mkdir(parents=True, exist_ok=True)
+    new_header = f"---- MODULE {module_name}_attempt_{attempt_id} ----"
+
+    # Robustly patch or insert MODULE header
+    header_pattern = r"^[-= ]*MODULE +[A-Za-z_][A-Za-z0-9_]*[-= ]*$"
+    lines = spec_text.splitlines()
+    found_header = False
+    for idx, line in enumerate(lines):
+        if re.match(header_pattern, line):
+            lines[idx] = new_header
+            found_header = True
+            break
+    if not found_header:
+        # Insert at top if no header found
+        lines.insert(0, new_header)
+    patched_spec = "\n".join(lines)
+
+    # Double-check for new header
+    if not re.match(header_pattern.replace('[A-Za-z_][A-Za-z0-9_]*', rf'{module_name}_attempt_{attempt_id}'), lines[0]):
+        import logging
+        logging.warning(f"[MODULE HEADER MISMATCH] Top line not patched as expected: {lines[0]}")
+
+    snapshot_name = f"{module_name}_attempt_{attempt_id}.tla"
+    snapshot_path = module_dir / snapshot_name
+    with open(snapshot_path, "w", encoding="utf-8") as f:
+        f.write(patched_spec)
+
+    # Optionally still overwrite the base file 
+    latest_path = module_dir / f"{module_name}.tla"
+    with open(latest_path, "w", encoding="utf-8") as f:
+        f.write(patched_spec)
+
+    return snapshot_path

@@ -1,0 +1,100 @@
+{
+  "task_name": "nasa_ddmr26",
+  "prompt_mode": "one_shot",
+  "terminal_status": "success",
+  "parse_success_rate": 1.0,
+  "semantic_success_rate": 0.5,
+  "generation_success": false,
+  "initial_verification_success": false,
+  "repair_iterations": 1,
+  "counterexamples_seen": 0,
+  "counterexamples_resolved": 0,
+  "skills_applied": [
+    "Unknown operator: `GENERIC_FN`"
+  ],
+  "skills_successful": 0,
+  "learning_step_index": null,
+  "human_intervention": false,
+  "metadata": {
+    "module_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_01/modules",
+    "cfg_file": "CLA_generation_eval.cfg",
+    "mode": "loop",
+    "max_iterations": "2"
+  },
+  "attempts": [
+    {
+      "attempt_id": 1,
+      "phase": "generate",
+      "prompt_name": "one_shot",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_01/modules/CLA_Generated_attempt_1.tla",
+      "status": "semantic_error",
+      "parse_ok": true,
+      "semantic_ok": false,
+      "invariants_violated": false,
+      "error_count": 7,
+      "feedback_excerpt": "Semantic errors:\n*** Errors: 6\nError: Parsing or semantic analysis failed.",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "Unknown operator: `GENERIC_FN`"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790011320.1424599,
+        "start_llm": 1790011320.1424599,
+        "end_llm": 1790011320.148265,
+        "duration_llm": 0.005805015563964844,
+        "start_tlc": 1790011320.148275,
+        "end_tlc": 1790011320.392653,
+        "duration_tlc": 0.24437808990478516,
+        "end_attempt": 1790011320.396213,
+        "duration_total": 0.2537531852722168,
+        "duration_engineering_overhead": 0.003570079803466797
+      }
+    },
+    {
+      "attempt_id": 2,
+      "phase": "repair",
+      "prompt_name": "repair",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_01/modules/CLA_Generated_attempt_2.tla",
+      "status": "success",
+      "parse_ok": true,
+      "semantic_ok": true,
+      "invariants_violated": false,
+      "error_count": 0,
+      "feedback_excerpt": "Early stop: checkpoint gated TLC success.",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {}
+    }
+  ],
+  "case_metrics": {
+    "case_id": "nasa_ddmr26_trial_None",
+    "mode": "one_shot",
+    "initial_candidate": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_01/modules/CLA_Generated_attempt_1.tla",
+    "initial_status": {
+      "parse": true,
+      "semantic": false,
+      "tlc": false
+    },
+    "final_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": true
+    },
+    "repair_attempts": 1,
+    "repair_success": true,
+    "initial_failure_classes": [
+      "unknown"
+    ],
+    "resolved_failure_classes": [
+      "unknown"
+    ],
+    "remaining_failure_classes": [],
+    "artifact_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_01"
+  }
+}

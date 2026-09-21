@@ -71,7 +71,6 @@ agentic_loop/base_text.txt
 agentic_loop/replay_outputs/.gitkeep
 agentic_loop/src/agentic_loop/__pycache__/*
 agentic_loop/tla/*
-agentic_loop/results/*
 
 agentic_loop/states/*
 agentic_loop/*.md

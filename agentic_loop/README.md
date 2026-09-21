@@ -186,15 +186,16 @@ Automated runs persist the evaluation metrics enumerated in [`verifier_in_the_lo
 
 This repository accompanies the following research contribution:
 
-- **Lu, T. (2026).** *Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing.* Technologie und Organisation. Springer Gabler, 2026. [Camera-ready](https://link.springer.com/book/9783658515102)
+- **Lu, T. (2026).** *Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26.* IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM), Paris, France, 26–27 October 2026. Camera-ready.
 
 ```bibtex
-@book{lu2026formal,
+@inproceedings{lu2026verifier,
   author    = {Lu, Tianxiang},
-  title     = {Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing},
-  series    = {Technologie und Organisation},
+  title     = {Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26},
+  booktitle = {IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)},
   year      = {2026},
-  publisher = {Springer Gabler},
-  note      = {Camera-ready}
+  address   = {Paris, France},
+  month     = oct,
+  note      = {Camera-ready; conference scheduled for 26--27 October 2026}
 }
 ```

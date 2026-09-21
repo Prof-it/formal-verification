@@ -149,3 +149,22 @@ Run tests in the `trace2vis` folder with:
 ```
 pytest
 ```
+
+## 📚 Publications
+
+This repository accompanies the following research contributions:
+
+* **Lu, T., Kneuper, R., John, U. and Beenken, P. (2027).** *A TLA+ Approach to Verifiable Temporal Compliance of Event-Driven Systems: A GDPR Case Study.* International Conference on Internet of Things, Data and Cloud Computing (ICC’27), Oxford, United Kingdom, 22–23 March 2027. **Submitted.**
+
+* **Beenken, P., John, U., Kneuper, R. and Lu, T. (2026).** *Modeling Time-Dependent Rules in Data Protection Law for Automated Compliance Checking.* Post-Proceedings of the 2nd Workshop on Intelligent Digitalization, Évora, Portugal. Camera-ready.
+
+```bibtex
+@inproceedings{beenken2026modeling,
+  author    = {Beenken, Philipp and John, Uwe and Kneuper, Ralf and Lu, Tianxiang},
+  title     = {Modeling Time-Dependent Rules in Data Protection Law for Automated Compliance Checking},
+  booktitle = {Post-Proceedings of the 2nd Workshop on Intelligent Digitalization},
+  year      = {2026},
+  address   = {Évora, Portugal},
+  note      = {Camera-ready}
+}
+```

@@ -1,0 +1,11 @@
+
+Paired TLC outcomes:
+Initial TLC  | After TLC Fail | After TLC Pass |
+-------------|----------------|---------------|
+Fail         |   12            | 68            |
+Pass         |   0             | 20            |
+
+McNemar's test on discordant pairs (Baseline fail→Loop pass=68, Baseline pass→Loop fail=0)
+McNemar p-value: 6.78e-21
+Baseline TLC pass rate: 20.0%
+Loop TLC pass rate:     88.0%

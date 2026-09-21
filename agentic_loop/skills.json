@@ -94,5 +94,11 @@
     "key": "parse_error_in_case_statement",
     "strategy": "Correct the syntax in the CASE statement to properly reference latchMode for each latch.",
     "suggested_skill": "Modify the CASE statement in the 'Next' action to use 'latchMode[i]' instead of 'latchMode'."
+  },
+  {
+    "pattern": "Encountered \"->\" at line \\d+, column \\d+ and token \"LATCH_COUNT\"",
+    "key": "parse_error_incorrect_function_syntax",
+    "strategy": "Correct the syntax for defining functions over a domain.",
+    "suggested_skill": "Replace '1..LATCH_COUNT -> {...}' with '[1..LATCH_COUNT -> {...}]' to correctly define a function over the domain."
   }
 ]

@@ -1,0 +1,6 @@
+trial_id,mode,seed,terminal_status,parse_success_rate,semantic_success_rate,generation_success,initial_verification_success,repair_iterations,regression,total_errors,human_intervention
+75,loop,,success,1.0,0.5,False,False,1,False,5,False
+
+trial_id,mode,attempt_id,phase,prompt_name,status,parse_ok,semantic_ok,invariants_violated,error_count
+75,loop,1,generate,one_shot,semantic_error,True,False,False,5
+75,loop,2,repair,repair,success,True,True,False,0

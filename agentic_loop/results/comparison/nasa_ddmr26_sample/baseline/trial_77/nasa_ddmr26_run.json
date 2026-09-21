@@ -1,0 +1,82 @@
+{
+  "task_name": "nasa_ddmr26",
+  "prompt_mode": "one_shot",
+  "terminal_status": "tlc_error",
+  "parse_success_rate": 1.0,
+  "semantic_success_rate": 1.0,
+  "generation_success": true,
+  "initial_verification_success": false,
+  "repair_iterations": 0,
+  "counterexamples_seen": 0,
+  "counterexamples_resolved": 0,
+  "skills_applied": [
+    "missing_next_state_assignment"
+  ],
+  "skills_successful": 0,
+  "learning_step_index": null,
+  "human_intervention": false,
+  "metadata": {
+    "module_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_77/modules",
+    "cfg_file": "CLA_generation_eval.cfg",
+    "mode": "baseline",
+    "max_iterations": "1"
+  },
+  "attempts": [
+    {
+      "attempt_id": 1,
+      "phase": "generate",
+      "prompt_name": "one_shot",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_77/modules/CLA_Generated_attempt_1.tla",
+      "status": "tlc_error",
+      "parse_ok": true,
+      "semantic_ok": true,
+      "invariants_violated": false,
+      "error_count": 1,
+      "feedback_excerpt": "Error: Successor state is not completely specified by action Next of the next-state relation. The following variables are not defined: motorState, secondaryReleaseState.\nError: The behavior up to this point is:",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "missing_next_state_assignment"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790012472.2204092,
+        "start_llm": 1790012472.2204092,
+        "end_llm": 1790012477.759609,
+        "duration_llm": 5.5391998291015625,
+        "start_tlc": 1790012477.759627,
+        "end_tlc": 1790012478.33482,
+        "duration_tlc": 0.575192928314209,
+        "end_attempt": 1790012478.337051,
+        "duration_total": 6.1166417598724365,
+        "duration_engineering_overhead": 0.002249002456665039
+      }
+    }
+  ],
+  "case_metrics": {
+    "case_id": "nasa_ddmr26_trial_None",
+    "mode": "one_shot",
+    "initial_candidate": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_77/modules/CLA_Generated_attempt_1.tla",
+    "initial_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": false
+    },
+    "final_status": {
+      "parse": true,
+      "semantic": true,
+      "tlc": false
+    },
+    "repair_attempts": 0,
+    "repair_success": false,
+    "initial_failure_classes": [
+      "missing_next_state_assignment"
+    ],
+    "resolved_failure_classes": [],
+    "remaining_failure_classes": [
+      "missing_next_state_assignment"
+    ],
+    "artifact_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_77"
+  }
+}

@@ -1,0 +1,5 @@
+trial_id,mode,seed,terminal_status,parse_success_rate,semantic_success_rate,generation_success,initial_verification_success,repair_iterations,regression,total_errors,human_intervention
+82,baseline,,tlc_error,1.0,1.0,True,False,0,,1,False
+
+trial_id,mode,attempt_id,phase,prompt_name,status,parse_ok,semantic_ok,invariants_violated,error_count
+82,baseline,1,generate,one_shot,tlc_error,True,True,False,1

@@ -7,8 +7,9 @@ import os
 import re
 import tempfile
 import math
-import warnings
 import numpy as np
+import logging
+logging.basicConfig(level=logging.WARNING)
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -51,7 +52,7 @@ class StagedModule:
             try:
                 self.cleanup()
             except Exception as exc:
-                warnings.warn(f"Failed to cleanup staged module directory '{self.root}': {exc}")
+                logging.warning(f"Failed to cleanup staged module directory '{self.root}': {exc}")
 
     def __enter__(self) -> "StagedModule":
         return self
@@ -253,7 +254,7 @@ def _stage_module_dir(task: Path, task_spec: Any, module_root: Path) -> Optional
             break
     # Do not allow copytree if stage_source is or contains the project root
     if project_root in stage_source.resolve().parents or stage_source.resolve() == project_root:
-        warnings.warn(
+        logging.warning(
             f"Refusing to recursively stage/copy project root directory '{project_root}' (source: '{stage_source}') for task '{task_spec.name}'."
         )
         return None
@@ -264,7 +265,7 @@ def _stage_module_dir(task: Path, task_spec: Any, module_root: Path) -> Optional
         shutil.copytree(stage_source, staged_source, dirs_exist_ok=True)
     except Exception as exc:
         shutil.rmtree(tmp_parent, ignore_errors=True)
-        warnings.warn(
+        logging.warning(
             f"Failed to stage module directory '{stage_source}' for task '{task_spec.name}': {exc}"
         )
         return None
@@ -274,11 +275,11 @@ def _stage_module_dir(task: Path, task_spec: Any, module_root: Path) -> Optional
         alt_details = ", ".join(
             f"{cand.path} (score={cand.score}, source={cand.source})" for cand in candidates[1:]
         )
-        print(
+        logging.debug(
             f"[ModuleStage] Selected '{toolbox_root}' (score={selected.score}) while other candidates were: {alt_details}"
         )
     else:
-        print(f"[ModuleStage] Selected '{toolbox_root}' (score={selected.score})")
+        logging.debug(f"[ModuleStage] Selected '{toolbox_root}' (score={selected.score})")
 
     return StagedModule(
         root=staged_toolbox.resolve(),
@@ -321,9 +322,8 @@ def _resolve_module_dir(
     if staged_result and staged_result.root.exists():
         return staged_result
 
-
     fresh_moduledir = Path(tempfile.mkdtemp(prefix=f"{task_spec.name}_", dir=str(module_root.resolve())))
-    print(f"[Bootstrap-Module] No input module-dir given; created temp dir: {fresh_moduledir}")
+    logging.debug(f"[Bootstrap-Module] No input module-dir given; created temp dir: {fresh_moduledir}")
     # Will contain no .tla input, so validate_module_layout/bootstrap fallback will trigger
     return StagedModule(
         root=fresh_moduledir,
@@ -639,7 +639,6 @@ def mcnemar_analysis(baseline_cases, loop_cases, summary_path="mcnemar_summary.t
     else:
         lines.append("Install statsmodels or scipy for p-value.\n")
 
-
     # Extra insight
     if n > 0:
         lines.append(f"Baseline TLC pass rate: {(PF+PP)/n:.1%}\n")
@@ -649,10 +648,10 @@ def mcnemar_analysis(baseline_cases, loop_cases, summary_path="mcnemar_summary.t
 
 
     summary_text = "".join(lines)
-    print(summary_text)
+    logging.info(summary_text)
     with open(summary_path, "w", encoding="utf-8") as out_f:
         out_f.write(summary_text)
-    print(f"\n==> McNemar summary written to {summary_path}")
+    logging.info(f"\n==> McNemar summary written to {summary_path}")
 
 
 def mcnemar_markdown(baseline_cases, loop_cases, md_path="mcnemar_summary.md"):
@@ -699,7 +698,7 @@ def mcnemar_markdown(baseline_cases, loop_cases, md_path="mcnemar_summary.md"):
 
     with open(md_path, "w", encoding="utf-8") as out_f:
         out_f.write(md)
-    print(f"McNemar summary written to {md_path}")
+    logging.info(f"McNemar summary written to {md_path}")
 
 def mcnemar_csv(baseline_cases, loop_cases, csv_path="mcnemar_summary.csv"):
     # Patch: true pairing
@@ -728,7 +727,7 @@ def mcnemar_csv(baseline_cases, loop_cases, csv_path="mcnemar_summary.csv"):
         writer.writerow(["", "After TLC Fail", "After TLC Pass"])
         writer.writerow(["Before: Fail", FF, FP])
         writer.writerow(["Before: Pass", PF, PP])
-    print(f"McNemar table written to {csv_path}")
+    logging.info(f"McNemar table written to {csv_path}")
 
 # Gather all per-attempt timings from both modes
 def collect_all_timings(baseline_jsons, loop_jsons):
@@ -792,22 +791,22 @@ def failure_class_table(cases, label):
             fc_table[fc]["total"] += 1
             if (case.get("final_status") or {}).get("tlc"):
                 fc_table[fc]["repaired"] += 1
-    print(f"\n| Failure class ({label}) | Cases | Repaired | Repairability |")
-    print("|----------------------|-------|----------|--------------|")
+    logging.info(f"\n| Failure class ({label}) | Cases | Repaired | Repairability |")
+    logging.info("|----------------------|-------|----------|--------------|")
     for fc, val in sorted(fc_table.items()):
         total = val["total"]
         repaired = val["repaired"]
         rep_rate = (repaired/total)*100 if total > 0 else 0
-        print(f"| {fc} | {total} | {repaired} | {rep_rate:.1f}% |")
+        logging.info(f"| {fc} | {total} | {repaired} | {rep_rate:.1f}% |")
 
 def extract_stats(cases):
     n_total = len(cases)
-    print(f"extract_stats: examining n_total={n_total}")
+    logging.debug(f"extract_stats: examining n_total={n_total}")
     isr_count = sum(1 for c in cases if (c.get("initial_status") or {}).get("tlc"))
     fsr_count = sum(1 for c in cases if (c.get("final_status") or {}).get("tlc"))
-    print(f"  TLC initial_status.tlc = True: {isr_count}")
-    print(f"  TLC final_status.tlc = True: {fsr_count}")
-    print(f"  Terminal statuses: {[c.get('TerminalStatus', '') for c in cases]}")
+    logging.debug(f"  TLC initial_status.tlc = True: {isr_count}")
+    logging.debug(f"  TLC final_status.tlc = True: {fsr_count}")
+    logging.debug(f"  Terminal statuses: {[c.get('TerminalStatus', '') for c in cases]}")
     failing = [c for c in cases if not (c.get("initial_status") or {}).get("tlc")]
     n_failing = len(failing)
     crsr = sum(1 for c in failing if (c.get("final_status") or {}).get("tlc")) / n_failing if n_failing else 0
@@ -821,20 +820,21 @@ def summarize_case_metrics_per_mode(baseline_cases, loop_cases):
     b_stats = extract_stats(baseline_cases)
     l_stats = extract_stats(loop_cases)
 
-    print("\nSuccess Rate Comparison (per mode):")
-    print("| Metric | Baseline | Loop |")
-    print("|--------|----------|------|")
-    print(f"| ISR    | {b_stats['ISR']:.2%} ({sum(1 for c in baseline_cases if (c.get('initial_status') or {}).get('tlc'))}/{b_stats['n_total']}) | "
+    logging.info("\nSuccess Rate Comparison (per mode):")
+    logging.info("| Metric | Baseline | Loop |")
+    logging.info("|--------|----------|------|")
+    logging.info(f"| ISR    | {b_stats['ISR']:.2%} ({sum(1 for c in baseline_cases if (c.get('initial_status') or {}).get('tlc'))}/{b_stats['n_total']}) | "
           f"{l_stats['ISR']:.2%} ({sum(1 for c in loop_cases if (c.get('initial_status') or {}).get('tlc'))}/{l_stats['n_total']}) |")
-    print(f"| FSR    | {b_stats['FSR']:.2%} ({sum(1 for c in baseline_cases if (c.get('final_status') or {}).get('tlc'))}/{b_stats['n_total']}) | "
+    logging.info(f"| FSR    | {b_stats['FSR']:.2%} ({sum(1 for c in baseline_cases if (c.get('final_status') or {}).get('tlc'))}/{b_stats['n_total']}) | "
           f"{l_stats['FSR']:.2%} ({sum(1 for c in loop_cases if (c.get('final_status') or {}).get('tlc'))}/{l_stats['n_total']}) |")
-    print(f"| CRSR   | {b_stats['CRSR']:.2%} ({sum(1 for c in [c for c in baseline_cases if not (c.get('initial_status') or {}).get('tlc')] if (c.get('final_status') or {}).get('tlc'))}/{b_stats['n_failing'] if b_stats['n_failing'] else 1}) | "
+    logging.info(f"| CRSR   | {b_stats['CRSR']:.2%} ({sum(1 for c in [c for c in baseline_cases if not (c.get('initial_status') or {}).get('tlc')] if (c.get('final_status') or {}).get('tlc'))}/{b_stats['n_failing'] if b_stats['n_failing'] else 1}) | "
           f"{l_stats['CRSR']:.2%} ({sum(1 for c in [c for c in loop_cases if not (c.get('initial_status') or {}).get('tlc')] if (c.get('final_status') or {}).get('tlc'))}/{l_stats['n_failing'] if l_stats['n_failing'] else 1}) |")
 
  
     failure_class_table(baseline_cases, "baseline")
     failure_class_table(loop_cases, "loop")
-    print_unknown_cases(baseline_cases + loop_cases);
+    logging.info("\nUnrepaired Loop Failure Summary:")
+    print_unrepaired_loop_failure_summary(loop_cases);
 
 def load_all_trials(output_dir, num_trials):
     baseline_jsons = []
@@ -844,7 +844,7 @@ def load_all_trials(output_dir, num_trials):
         base_path = output_dir / "baseline" / f"trial_{i:02d}" / "run.json"
         loop_path = output_dir / "loop" / f"trial_{i:02d}" / "run.json"
         if not base_path.exists() or not loop_path.exists():
-            print(f"[WARN] Missing results for trial={i}: {base_path} {loop_path}")
+            logging.warning(f"[WARN] Missing results for trial={i}: {base_path} {loop_path}")
             missing_trials += 1
             continue
         with open(base_path, "r") as bf:
@@ -887,7 +887,7 @@ def discover_trial_ids(output_dir):
             if num is not None:
                 loop_trials.add(num)
     paired = sorted(baseline_trials & loop_trials)
-    print(f"[DEBUG] discover_trial_ids: found paired trials: {paired}")
+    logging.debug(f"[DEBUG] discover_trial_ids: found paired trials: {paired}")
     return paired
 
 def load_paired_trials(output_dir):
@@ -912,7 +912,7 @@ def load_paired_trials(output_dir):
                 baseline_jsons.append(json.load(bf))
             with open(loop_path, "r") as lf:
                 loop_jsons.append(json.load(lf))
-    print(f"[DEBUG] load_paired_trials: Loaded {len(trial_ids)} trial pairs.")
+    logging.debug(f"[DEBUG] load_paired_trials: Loaded {len(trial_ids)} trial pairs.")
     return trial_ids, baseline_jsons, loop_jsons
 
 
@@ -977,11 +977,11 @@ def extract_case_metrics(baseline_jsons, loop_jsons):
         loop_cases.append(entry_l)
         all_case_metrics.append(entry_b)
         all_case_metrics.append(entry_l)
-    print("DEBUG: After extract_case_metrics")
-    print("  Baseline final_status tlc: ", [c["final_status"]["tlc"] for c in baseline_cases])
-    print("  Loop final_status tlc: ", [c["final_status"]["tlc"] for c in loop_cases])
-    print("  Baseline TerminalStatus: ", [c.get("TerminalStatus", "") for c in baseline_cases])
-    print("  Loop TerminalStatus: ", [c.get("TerminalStatus", "") for c in loop_cases])
+    logging.debug("DEBUG: After extract_case_metrics")
+    logging.debug("  Baseline final_status tlc: ", [c["final_status"]["tlc"] for c in baseline_cases])
+    logging.debug("  Loop final_status tlc: ", [c["final_status"]["tlc"] for c in loop_cases])
+    logging.debug("  Baseline TerminalStatus: ", [c.get("TerminalStatus", "") for c in baseline_cases])
+    logging.debug("  Loop TerminalStatus: ", [c.get("TerminalStatus", "") for c in loop_cases])
     return baseline_cases, loop_cases, all_case_metrics
 
 
@@ -998,7 +998,16 @@ def trial_id_key(cid):
 def print_unknown_cases(case_metrics_list):
     for entry in case_metrics_list:
         if "unknown" in entry.get("initial_failure_classes", []):
-            print(f"Case {entry.get('case_id', '???')} is UNKNOWN. All fields: {entry}")
+            logging.info(f"Case {entry.get('case_id', '???')} is UNKNOWN. All fields: {entry}")
+            logging.info(f"Case {entry.get('case_id', '???')} is UNKNOWN. All fields: {entry}")
+
+def print_unrepaired_loop_failure_summary(case_metrics_list):
+    logging.info("| Unrepaired Case | TerminalStatus | Final Failure Classes |")
+    logging.info("|----------------|---------------|----------------------|")
+    for entry in case_metrics_list:
+        if entry.get("mode") == "loop" and not (entry.get("final_status") or {}).get("tlc", True):
+            logging.info(f"| {entry.get('case_id','?')} | {entry.get('TerminalStatus','')} | {entry.get('final_failure_classes', entry.get('initial_failure_classes', 'N/A'))} |")
+
 
 def summarize_full_run(
     root_out,
@@ -1035,55 +1044,54 @@ def summarize_full_run(
                 f"{learning_summary['step_span']} | {learning_summary['learning_efficiency']:.3f} |\n"
             )
         else:
-            print("No learning-series artifacts found; skipping learning efficiency aggregation.")
+            logging.info("No learning-series artifacts found; skipping learning efficiency aggregation.")
 
     md_path.write_text(md_table + "\n", encoding="utf-8")
-    print("Comparison completed.")
-    print(f"CSV table:     {csv_path}")
-    print(f"Markdown:      {md_path}")
+    logging.info("Comparison completed.")
+    logging.info(f"CSV table:     {csv_path}")
+    logging.info(f"Markdown:      {md_path}")
     if learning_summary and summary_path:
-        print(f"Learning efficiency summary JSON: {summary_path}")
-        print("Learning efficiency summary:")
-        print(json.dumps(learning_summary, indent=2))
-    print("\n" + md_table)
+        logging.info(f"Learning efficiency summary JSON: {summary_path}")
+        logging.info("Learning efficiency summary:")
+        logging.info(json.dumps(learning_summary, indent=2))
+    logging.info("\n" + md_table)
 
-    # Per-case metrics and pairwise stats
-    print("len(baseline_jsons):", len(baseline_jsons))
-    print("len(loop_jsons):", len(loop_jsons))
+    logging.debug("len(baseline_jsons):", len(baseline_jsons))
+    logging.debug("len(loop_jsons):", len(loop_jsons))
 
     baseline_cases, loop_cases, all_case_metrics = extract_case_metrics(baseline_jsons, loop_jsons)
 
-    print("AFTER extract_case_metrics debug:")
-    print("  baseline_cases len:", len(baseline_cases))
-    print("  loop_cases len:", len(loop_cases))
+    logging.debug("AFTER extract_case_metrics debug:")
+    logging.debug("  baseline_cases len:", len(baseline_cases))
+    logging.debug("  loop_cases len:", len(loop_cases))
 
     case_metrics_csv_path = root_out / "case_metrics.csv"
     _write_case_metrics_csv(case_metrics_csv_path, all_case_metrics)
 
-    print("\n==== DEBUG: baseline_cases ====")
+    logging.debug("\n==== DEBUG: baseline_cases ====")
     for c in baseline_cases:
-        print(f"{c['case_id']}: final_status.tlc={c['final_status'].get('tlc')} TerminalStatus={c.get('TerminalStatus', '')} initial_status.tlc={c['initial_status'].get('tlc')}")
+        logging.debug(f"{c['case_id']}: final_status.tlc={c['final_status'].get('tlc')} TerminalStatus={c.get('TerminalStatus', '')} initial_status.tlc={c['initial_status'].get('tlc')}")
 
-    print("\n==== DEBUG: loop_cases ====")
+    logging.debug("\n==== DEBUG: loop_cases ====")
     for c in loop_cases:
-        print(f"{c['case_id']}: final_status.tlc={c['final_status'].get('tlc')} TerminalStatus={c.get('TerminalStatus', '')} initial_status.tlc={c['initial_status'].get('tlc')}")
+        logging.debug(f"{c['case_id']}: final_status.tlc={c['final_status'].get('tlc')} TerminalStatus={c.get('TerminalStatus', '')} initial_status.tlc={c['initial_status'].get('tlc')}")
 
     # Side-by-side summaries/stats
     summarize_case_metrics_per_mode(baseline_cases, loop_cases)
     # Timing
     all_llm, all_tlc, all_ovh, all_total = collect_all_timings(baseline_jsons, loop_jsons)
-    print("\nTiming statistics per phase (seconds):")
+    logging.info("\nTiming statistics per phase (seconds):")
     phases = [
         ("LLM call", all_llm),
         ("TLC call", all_tlc),
         ("Engineering overhead", all_ovh),
         ("Total step", all_total)
     ]
-    print("| Phase                | Mean | Median | Min | Max | Attempts |")
-    print("|--------------------- |------|--------|-----|-----|----------|")
+    logging.info("| Phase                | Mean | Median | Min | Max | Attempts |")
+    logging.info("|--------------------- |------|--------|-----|-----|----------|")
     for label, data in phases:
         mean_, median_, min_, max_, N_ = timing_stats(data)
-        print(f"| {label:<20} | {fmt(mean_)} | {fmt(median_,6)} | {fmt(min_,3)} | {fmt(max_,3)} | {fmt_int(N_,3)} |")
+        logging.info(f"| {label:<20} | {fmt(mean_)} | {fmt(median_,6)} | {fmt(min_,3)} | {fmt(max_,3)} | {fmt_int(N_,3)} |")
     # McNemar
     mcnemar_analysis(baseline_cases, loop_cases, summary_path=str(root_out / "mcnemar_summary.txt"))
     mcnemar_markdown(baseline_cases, loop_cases, md_path=str(root_out / "mcnemar_summary.md"))
@@ -1111,14 +1119,14 @@ def main() -> None:
         root_out = output_dir / task_name
         baseline_out = root_out / "baseline"
         loop_out = root_out / "loop"
-        print("root_out:", root_out)
-        print("baseline_out:", baseline_out)
-        print("loop_out:", loop_out)
+        logging.debug("root_out:", root_out)
+        logging.debug("baseline_out:", baseline_out)
+        logging.debug("loop_out:", loop_out)
 
         if args.analyze_only:
             trial_ids, baseline_jsons, loop_jsons = load_paired_trials(root_out)
-            print("len(baseline_jsons):", len(baseline_jsons))
-            print("len(loop_jsons):", len(loop_jsons))
+            logging.debug("len(baseline_jsons):", len(baseline_jsons))
+            logging.debug("len(loop_jsons):", len(loop_jsons))
             summarize_full_run(
                 root_out=root_out,
                 task_name=task_name,
@@ -1126,7 +1134,7 @@ def main() -> None:
                 loop_jsons=loop_jsons,
                 args=args,
             )
-            print(f"Analysis-only mode complete. {len(baseline_jsons)} trials analyzed.")
+            logging.debug(f"Analysis-only mode complete. {len(baseline_jsons)} trials analyzed.")
             return
 
         baseline_out.mkdir(parents=True, exist_ok=True)
@@ -1192,9 +1200,10 @@ def main() -> None:
             _write_trial_metrics_csv(baseline_trial_out / "metrics.csv", baseline_json, trial, "baseline", seed)
 
 
+            logging.info(f"Baseline final status: {baseline_final_status}")
 
             if baseline_final_status == "success":
-                print(f"[SKIP LOOP] Baseline already passes in trial {trial}, not running loop experiment.")
+                logging.info(f"[SKIP LOOP] Baseline already passes in trial {trial}, not running loop experiment.")
                 loop_json = {
                     "terminal_status": "skipped",
                     "repair_iterations": 0,
@@ -1217,7 +1226,7 @@ def main() -> None:
             # --- Paired starting spec for loop (NEW: ensure initial spec for loop is the same as baseline) ---
             baseline_initial_spec = str(baseline_trial_out / "modules" / f"{task.module_name}_attempt_1.tla")
             if not os.path.isfile(baseline_initial_spec):
-                print(f"[WARN] Baseline initial spec not found: {baseline_initial_spec}")
+                logging.warning(f"[WARN] Baseline initial spec not found: {baseline_initial_spec}")
 
             # Loop mode with regression tracking
             modules_loop = loop_trial_out / "modules"
@@ -1259,7 +1268,7 @@ def main() -> None:
                 elif seen_success and status != "success":
                     regression_flag = True
                     regression_attempt_index = idx + 1  # 1-based for user
-                    print(f"[REGRESSION] Trial {trial}: Regression detected at attempt {regression_attempt_index}. Status sequence: {tlc_statuses}")
+                    logging.info(f"[REGRESSION] Trial {trial}: Regression detected at attempt {regression_attempt_index}. Status sequence: {tlc_statuses}")
                     _log_event_to_csv(events_csv_path, trial, "regression", regression_attempt_index, "loop", {"tlc_statuses": tlc_statuses})
                     break
             loop_json["regression"] = regression_flag
@@ -1281,7 +1290,7 @@ def main() -> None:
                 for idx, attempt in enumerate(attempts):
                     if attempt.get("status", "") == "success":
                         repair_attempt_index = idx + 1  # 1-based counting
-                        print(f"[REPAIR] Trial {trial}: Repair detected at attempt {repair_attempt_index}.")
+                        logging.info(f"[REPAIR] Trial {trial}: Repair detected at attempt {repair_attempt_index}.")
                         _log_event_to_csv(events_csv_path, trial, "repair", repair_attempt_index, "loop", {
                             "attempt": attempt,
                             "baseline_terminal_status": baseline_final_status,

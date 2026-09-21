@@ -54,7 +54,7 @@
     "suggested_skill": "Rename the file to match the module name declared in the TLA+ specification."
   },
   {
-    "pattern": "Encountered \"Beginning of definition\" at line \\d+, column \\d+ and token \"\\\\\"",
+    "pattern": "Encountered \"Beginning of definition\" at line \\d+, column \\d+ and token \".*\"",
     "key": "parse_error_if_then_else",
     "strategy": "Ensure all IF-THEN-ELSE structures are properly closed with an ELSE clause.",
     "suggested_skill": "Modify the DDMR26 invariant to include an ELSE clause that handles all cases, such as: DDMR26 == \\A i \\in 1..N: IF mode[i] = \"RTC\" THEN latchPawlPosition[i] = \"unlatched\" ELSE IF mode[i] = \"RTR\" THEN latchPawlPosition[i] = \"latched\" ELSE IF mode[i] = \"secondaryRelease\" THEN latchPawlPosition[i] = \"unlatched\" ELSE TRUE"
@@ -70,5 +70,11 @@
     "key": "infinite_set_enumeration_error",
     "strategy": "Restrict the range of 'currentDraw' to a finite subset of Nat.",
     "suggested_skill": "Modify the definition of 'currentDraw' to use a finite subset of Nat, such as 0..MAX_CURRENT, where MAX_CURRENT is a constant representing the maximum expected current draw."
+  },
+  {
+    "key": "quantifier_scope_conjunction",
+    "pattern": "Unknown operator: `i'.",
+    "strategy": "Ensure all conjuncts using an existential (\\E) or universal (\\A) quantifier share the same variable binding by nesting all relevant lines inside the quantifier scope.",
+    "suggested_skill": "Indent all conjunctions (lines started with `/\\`) under the quantifier so that the bound variable(s) are available. Alternatively, parenthesize the full conjunction after the quantifier."
   }
 ]

@@ -1,0 +1,52 @@
+---- MODULE CLA_Generated_attempt_2 ----
+EXTENDS Naturals, Sequences
+
+CONSTANTS N \* Number of latches
+
+VARIABLES mode, latchPawlPosition, motorStatus, secondaryReleaseStatus
+
+\* Initial state of the system
+Init == /\ mode = [i \in 1..N |-> "RTC"]
+        /\ latchPawlPosition = [i \in 1..N |-> "unlatched"]
+        /\ motorStatus = [i \in 1..N |-> "operational"]
+        /\ secondaryReleaseStatus = [i \in 1..N |-> "inactive"]
+
+\* Type invariant for the system
+TypeOK == /\ mode \in [1..N -> {"RTC", "RTR", "secondaryRelease"}]
+          /\ latchPawlPosition \in [1..N -> {"latched", "unlatched"}]
+          /\ motorStatus \in [1..N -> {"operational", "failed"}]
+          /\ secondaryReleaseStatus \in [1..N -> {"active", "inactive"}]
+
+\* Problem invariant representing the requirement for direct indication of critical states
+DDMR26 == \A i \in 1..N: 
+            /\ (mode[i] = "RTC" => latchPawlPosition[i] = "unlatched")
+            /\ (mode[i] = "RTR" => latchPawlPosition[i] = "latched")
+            /\ (mode[i] = "secondaryRelease" => secondaryReleaseStatus[i] = "active")
+
+\* Steps representing the transitions of the system
+ReadyToCapture == /\ \E i \in 1..N: mode[i] = "RTR"
+                  /\ mode' = [mode EXCEPT ![i] = "RTC"]
+                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "unlatched"]
+                  /\ UNCHANGED <<motorStatus, secondaryReleaseStatus>>
+
+ReadyToRelease == /\ \E i \in 1..N: mode[i] = "RTC"
+                  /\ mode' = [mode EXCEPT ![i] = "RTR"]
+                  /\ latchPawlPosition' = [latchPawlPosition EXCEPT ![i] = "latched"]
+                  /\ UNCHANGED <<motorStatus, secondaryReleaseStatus>>
+
+SecondaryRelease == /\ \E i \in 1..N: mode[i] = "RTC" /\ motorStatus[i] = "failed"
+                    /\ mode' = [mode EXCEPT ![i] = "secondaryRelease"]
+                    /\ secondaryReleaseStatus' = [secondaryReleaseStatus EXCEPT ![i] = "active"]
+                    /\ UNCHANGED <<latchPawlPosition, motorStatus>>
+
+Next == \E i \in 1..N: 
+          \/ (mode[i] = "RTR" /\ ReadyToCapture)
+          \/ (mode[i] = "RTC" /\ ReadyToRelease)
+          \/ (mode[i] = "RTC" /\ motorStatus[i] = "failed" /\ SecondaryRelease)
+
+\* Specification of the system
+Spec == Init /\ [][Next]_<<mode, latchPawlPosition, motorStatus, secondaryReleaseStatus>>
+
+=====================================================================
+Define missing recursive function as bracket-domain.
+====

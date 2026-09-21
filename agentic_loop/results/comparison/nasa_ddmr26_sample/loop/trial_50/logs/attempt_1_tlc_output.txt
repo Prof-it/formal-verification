@@ -1,0 +1,46 @@
+TLC2 Version 2026.05.26.235334 (rev: 4ba7d88)
+Running breadth-first search Model-Checking with fp 26 and seed 8236894966965899610 with 1 worker on 12 cores with 16384MB heap and 64MB offheap memory [pid: 67841] (Mac OS X 26.6.2 aarch64, Eclipse Adoptium 17.0.15 64bit, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_50/modules/CLA_Generated_attempt_1.tla
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-2608142656030825945/Naturals.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/Naturals.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-2608142656030825945/Sequences.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/Sequences.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-2608142656030825945/_TLCTrace.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/_TLCTrace.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-2608142656030825945/TLC.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/TLC.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-2608142656030825945/TLCExt.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/TLCExt.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-2608142656030825945/FiniteSets.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/FiniteSets.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-2608142656030825945/Integers.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/Integers.tla)
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module Integers
+Semantic processing of module TLCExt
+Semantic processing of module _TLCTrace
+Semantic processing of module CLA_Generated_attempt_1
+Linting of module TLCExt
+Linting of module _TLCTrace
+Linting of module CLA_Generated_attempt_1
+Starting... (2026-09-21 19:32:03)
+Computing initial states...
+Computed 2 initial states...
+Computed 4 initial states...
+Finished computing initial states: 8 distinct states generated at 2026-09-21 19:32:03.
+Error: Successor state is not completely specified by action NominalCapture of the next-state relation. The following variables are not defined: motorStatus, secondaryReleaseStatus.
+
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ motorStatus = "operational"
+/\ secondaryReleaseStatus = "inactive"
+/\ mode = "RTC"
+/\ latchPawlPosition = "latched"
+
+State 2: <NominalCapture line 26, col 19 to line 30, col 53 of module CLA_Generated_attempt_1>
+/\ motorStatus = null
+/\ secondaryReleaseStatus = null
+/\ mode = "RTR"
+/\ latchPawlPosition = "unlatched"
+
+9 states generated, 8 distinct states found, 7 states left on queue.
+The depth of the complete state graph search is 1.
+Finished in 00s at (2026-09-21 19:32:03)
+Trace exploration spec path: ./CLA_Generated_attempt_1_TTrace_1790011923.tla
+

@@ -1,0 +1,4 @@
+attempt_id,phase,prompt_name,module_file,status,parse_ok,semantic_ok,invariants_violated,error_count,feedback_excerpt,counterexamples_seen,counterexamples_resolved,skills_applied,skills_successful,human_intervention
+1,generate,one_shot,/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/baseline/trial_39/modules/CLA_Generated_attempt_1.tla,semantic_error,True,False,False,9,"Semantic errors:
+*** Errors: 8
+Error: Parsing or semantic analysis failed.",0,0,Unknown operator: `GENERIC_FN`,False,False

@@ -1,0 +1,114 @@
+{
+  "task_name": "nasa_ddmr26",
+  "prompt_mode": "one_shot",
+  "terminal_status": "semantic_error",
+  "parse_success_rate": 0.5,
+  "semantic_success_rate": 0.0,
+  "generation_success": false,
+  "initial_verification_success": false,
+  "repair_iterations": 1,
+  "counterexamples_seen": 0,
+  "counterexamples_resolved": 0,
+  "skills_applied": [
+    "parse_error_if_then_else",
+    "Unknown operator: `GENERIC_FN`"
+  ],
+  "skills_successful": 0,
+  "learning_step_index": null,
+  "human_intervention": false,
+  "metadata": {
+    "module_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_47/modules",
+    "cfg_file": "CLA_generation_eval.cfg",
+    "mode": "loop",
+    "max_iterations": "2"
+  },
+  "attempts": [
+    {
+      "attempt_id": 1,
+      "phase": "generate",
+      "prompt_name": "one_shot",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_47/modules/CLA_Generated_attempt_1.tla",
+      "status": "parse_error",
+      "parse_ok": false,
+      "semantic_ok": false,
+      "invariants_violated": false,
+      "error_count": 1,
+      "feedback_excerpt": "***Parse Error***\nFatal errors while parsing TLA+ spec in file CLA_Generated_attempt_1\n*** Errors: 1\nError: Parsing or semantic analysis failed.",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "parse_error_if_then_else"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790011882.194336,
+        "start_llm": 1790011882.194336,
+        "end_llm": 1790011882.2004852,
+        "duration_llm": 0.0061492919921875,
+        "start_tlc": 1790011882.200502,
+        "end_tlc": 1790011882.3776221,
+        "duration_tlc": 0.17712020874023438,
+        "end_attempt": 1790011882.38136,
+        "duration_total": 0.18702411651611328,
+        "duration_engineering_overhead": 0.0037546157836914062
+      }
+    },
+    {
+      "attempt_id": 2,
+      "phase": "repair",
+      "prompt_name": "repair",
+      "module_file": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_47/modules/CLA_Generated_attempt_2.tla",
+      "status": "semantic_error",
+      "parse_ok": true,
+      "semantic_ok": false,
+      "invariants_violated": false,
+      "error_count": 5,
+      "feedback_excerpt": "Semantic errors:\n*** Errors: 4\nError: Parsing or semantic analysis failed.",
+      "counterexamples_seen": 0,
+      "counterexamples_resolved": 0,
+      "skills_applied": [
+        "Unknown operator: `GENERIC_FN`"
+      ],
+      "skills_successful": false,
+      "human_intervention": false,
+      "timing": {
+        "start_attempt": 1790011882.3825212,
+        "start_llm": 1790011882.3825212,
+        "end_llm": 1790011889.668331,
+        "duration_llm": 7.285809755325317,
+        "start_tlc": 1790011889.66837,
+        "end_tlc": 1790011889.943928,
+        "duration_tlc": 0.2755579948425293,
+        "end_attempt": 1790011889.9468958,
+        "duration_total": 7.564374685287476,
+        "duration_engineering_overhead": 0.0030069351196289062
+      }
+    }
+  ],
+  "case_metrics": {
+    "case_id": "nasa_ddmr26_trial_None",
+    "mode": "one_shot",
+    "initial_candidate": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_47/modules/CLA_Generated_attempt_1.tla",
+    "initial_status": {
+      "parse": false,
+      "semantic": false,
+      "tlc": false
+    },
+    "final_status": {
+      "parse": true,
+      "semantic": false,
+      "tlc": false
+    },
+    "repair_attempts": 1,
+    "repair_success": false,
+    "initial_failure_classes": [
+      "unknown"
+    ],
+    "resolved_failure_classes": [],
+    "remaining_failure_classes": [
+      "unknown"
+    ],
+    "artifact_dir": "/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_47"
+  }
+}

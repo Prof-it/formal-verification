@@ -1,0 +1,4 @@
+attempt_id,phase,prompt_name,module_file,status,parse_ok,semantic_ok,invariants_violated,error_count,feedback_excerpt,counterexamples_seen,counterexamples_resolved,skills_applied,skills_successful,human_intervention
+1,generate,one_shot,/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_45/modules/CLA_Generated_attempt_1.tla,tlc_error,True,True,False,1,"Error: Successor state is not completely specified by action NominalCaptureRelease of the next-state relation. The following variables are not defined: motorStatus, secondaryReleaseStatus.
+Error: The behavior up to this point is:",0,0,missing_next_state_assignment,False,False
+2,repair,repair,/Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_45/modules/CLA_Generated_attempt_2.tla,success,True,True,False,0,Early stop: checkpoint gated TLC success.,0,0,,False,False

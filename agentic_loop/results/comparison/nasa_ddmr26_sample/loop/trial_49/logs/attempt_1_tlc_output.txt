@@ -1,0 +1,43 @@
+TLC2 Version 2026.05.26.235334 (rev: 4ba7d88)
+Running breadth-first search Model-Checking with fp 90 and seed -5372500191951075783 with 1 worker on 12 cores with 16384MB heap and 64MB offheap memory [pid: 67752] (Mac OS X 26.6.2 aarch64, Eclipse Adoptium 17.0.15 64bit, MSBDiskFPSet, DiskStateQueue).
+Parsing file /Users/tianxiang.lu/dev/formal-verification/agentic_loop/results/comparison/nasa_ddmr26_sample/loop/trial_49/modules/CLA_Generated_attempt_1.tla
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-5489049093402677845/Naturals.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/Naturals.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-5489049093402677845/Sequences.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/Sequences.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-5489049093402677845/_TLCTrace.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/_TLCTrace.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-5489049093402677845/TLC.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/TLC.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-5489049093402677845/TLCExt.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/TLCExt.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-5489049093402677845/FiniteSets.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/FiniteSets.tla)
+Parsing file /private/var/folders/kc/v5fb6mr50tv0hgk1427rt1gr0000gp/T/tlc-5489049093402677845/Integers.tla (jar:file:/Users/tianxiang.lu/dev/formal-verification/agentic_loop/tla/tla2tools.jar!/tla2sany/StandardModules/Integers.tla)
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module Integers
+Semantic processing of module TLCExt
+Semantic processing of module _TLCTrace
+Semantic processing of module CLA_Generated_attempt_1
+Linting of module TLCExt
+Linting of module _TLCTrace
+Linting of module CLA_Generated_attempt_1
+Starting... (2026-09-21 19:31:51)
+Computing initial states...
+Error: TLC expected a boolean value, but did not find one. line 10, col 21 to line 10, col 24 of module CLA_Generated_attempt_1
+While working on the initial state:
+/\ motorStatus = <<"Operational", "Operational", "Operational">>
+/\ secondaryReleaseStatus = <<"Inactive", "Inactive", "Inactive">>
+/\ latchPosition = <<0, 0, 0>>
+/\ latchState = <<"RTC", "RTC", "RTC">>
+
+Error: The error occurred when TLC was evaluating the nested
+expressions at the following positions:
+0. Line 20, column 9 to line 23, column 108 in CLA_Generated_attempt_1
+1. Line 20, column 12 to line 20, column 96 in CLA_Generated_attempt_1
+2. Line 21, column 12 to line 21, column 55 in CLA_Generated_attempt_1
+3. Line 22, column 12 to line 22, column 78 in CLA_Generated_attempt_1
+4. Line 23, column 12 to line 23, column 108 in CLA_Generated_attempt_1
+
+
+1 states generated, 1 distinct states found, 1 states left on queue.
+The depth of the complete state graph search is 1.
+Finished in 00s at (2026-09-21 19:31:51)
+

@@ -1,24 +1,35 @@
-flowchart TD 
-    R["Natural-Language Requirement"] --> P["Prompt Renderer"] 
-    P --> G["LLM Provider"] 
-    G --> S["TLA+ Snapshot Writer"] 
-    S --> T["TLC Runner"] 
+flowchart TD
+    %% Top section
+    R["Natural-Language Requirement"] --> P["Prompt Renderer"]
+    subgraph "Execution Modes"
+        BL["Baseline<br/>1 generation + 1 TLC"]
+        LP["Verifier-in-the-Loop<br/>≤ max_iterations"]
+    end
+    BL -.-> P
+    LP -.-> P
+    P --> G["LLM Provider"]
 
-    T -->|Pass| O["Persist Run Artifacts"] 
-    T -->|Violation / Error| D["Diagnosis Instrumentation"] 
-    
-    D --> K["Static Skill Rules<br/>Deterministic • Stateless"] 
-    K --> RP["Repair Prompt<br/>TLC Feedback + Prior Spec"] 
-    RP --> G 
-    
-    subgraph "Execution Modes" 
-        BL["Baseline<br/>1 generation + 1 TLC"] 
-        LP["Verifier-in-the-Loop<br/>≤ max_iterations"] 
-    end 
-    
-    BL -.-> P 
-    LP -.-> P 
-    
-    M["No persistent memory<br/>No learned repair policy<br/>No cross-trial adaptation"] 
-    
-    K --- M
+    %% TLC gate (main checkpoint -- XOR-like)
+    G --> S["TLA+ Snapshot Writer"]
+    S --> TGATE["((⊗))<br/>TLC Gate<br/>Regression-Proof"]
+
+    %% If pass, commit output
+    TGATE -->|Pass| O["Persist Run Artifacts"]
+
+    %% If error/violation, loop to repair
+    TGATE -->|Violation/Error| D["Diagnosis Instrumentation"]
+    D --> LLM_SKILL["LLM: Propose Modular Repair<br/>and Regex Rule"]
+    LLM_SKILL --> HA["🧑‍⚖️<br/>Human Approval Gate"]
+    HA -->|Approved| RULES["Rule DB<br/>(human-approved, persistent)"]
+    RULES --> RP["Repair Prompt<br/>TLC Feedback + Prior Spec"]
+    RP --> G
+
+    %% No autonomous agent memory, clarify in box
+    PERSIST["No autonomous learning<br/>All repair memory is approved Rule DB"]
+    RULES --- PERSIST
+
+    %% Styling for highlights
+    style TGATE fill:#EAECF7,stroke:#4223C7,stroke-width:3px
+    style HA fill:#FFFACD,stroke:#FFB300,stroke-width:2px
+    style LLM_SKILL fill:#F0F0F0,stroke:#444,stroke-width:1px
+    style RULES fill:#DAE8FC,stroke:#156,stroke-width:1.5px

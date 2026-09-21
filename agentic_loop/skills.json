@@ -76,5 +76,23 @@
     "pattern": "Unknown operator: `i'.",
     "strategy": "Ensure all conjuncts using an existential (\\E) or universal (\\A) quantifier share the same variable binding by nesting all relevant lines inside the quantifier scope.",
     "suggested_skill": "Indent all conjunctions (lines started with `/\\`) under the quantifier so that the bound variable(s) are available. Alternatively, parenthesize the full conjunction after the quantifier."
+  },
+  {
+    "pattern": "TLC expected a boolean value, but did not find one",
+    "key": "semantic_error_boolean_evaluation",
+    "strategy": "Ensure DDMR26 evaluates to a boolean by correcting the logical conditions.",
+    "suggested_skill": "Modify the DDMR26 definition to correctly reflect the intended logic. Ensure that the conditions are consistent with the initial state and transitions. For example, check that latchPosition[i] is consistent with latchState[i] and adjust the logic accordingly."
+  },
+  {
+    "pattern": "Computed \\d+ initial states",
+    "key": "state_explosion",
+    "strategy": "Reduce the state space by refining the model or adding constraints.",
+    "suggested_skill": "Consider adding constraints to the model to limit the number of possible states. For example, refine the initial state definition or add invariants that reduce the number of valid states."
+  },
+  {
+    "pattern": "Encountered \"latchMode\" at line \\d+, column \\d+ and token \"Latched\"",
+    "key": "parse_error_in_case_statement",
+    "strategy": "Correct the syntax in the CASE statement to properly reference latchMode for each latch.",
+    "suggested_skill": "Modify the CASE statement in the 'Next' action to use 'latchMode[i]' instead of 'latchMode'."
   }
 ]

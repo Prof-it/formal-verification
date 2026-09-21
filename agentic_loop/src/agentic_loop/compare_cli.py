@@ -22,6 +22,7 @@ from .engine import run_experiment, validate_module_layout
 from .models import LoopConfig
 from .providers import build_provider
 from .utils.io_utils import purge_temp_modules
+from .core.copy_utils import copytree_symlink_safe
 
 from .task_loader import load_task_spec
 
@@ -767,12 +768,6 @@ def fmt_int(v, width=3):
         return f"{v:>{width}d}"
     return f"{v:>{width}}"
 
-def copytree_symlink_safe(src, dst):
-    # Recursively copy a directory tree (src) into new location (dst)
-    # Overwrites dst if exists; skips symlinks for extra safety.
-    if os.path.exists(dst):
-        shutil.rmtree(dst)
-    shutil.copytree(src, dst, symlinks=False, dirs_exist_ok=True)
 
 # Failure class repairability table per mode
 def failure_class_table(cases, label):

@@ -6,6 +6,7 @@ from pathlib import Path
 from collections import Counter
 import sys
 
+from metrics.stats_analysis import _is_tlc_success
 try:
     from statsmodels.stats.contingency_tables import mcnemar
 except ImportError:
@@ -336,12 +337,7 @@ def main():
         paired_case_metrics.append(b_entry)
         paired_case_metrics.append(l_entry)
         # For debugging, print TRUE regressions
-        def _is_tlc_success(entry):
-            tlc_val = (entry.get("final_status") or {}).get("tlc", None)
-            if isinstance(tlc_val, bool):
-                return tlc_val
-            status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
-            return (str(status).lower() == "success")
+
         if _is_tlc_success(b_entry) and not _is_tlc_success(l_entry):
             print(f"REGRESSION: trial {i+1:02d} baseline=success, loop={l_entry.get('final_status')}")
 

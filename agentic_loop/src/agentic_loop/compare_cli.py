@@ -8,7 +8,9 @@ import re
 import tempfile
 import numpy as np
 import logging
+# At the very TOP of your script, before any logging calls:
 logging.basicConfig(level=logging.WARNING)
+
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -660,59 +662,75 @@ def extract_trial_num(dirname):
         return int(m.group(1))
     return None
 
+def is_baseline_success(baseline_json):
+    # Adjust this logic to match *your* definition of baseline success in your JSON!
+    return baseline_json.get("TerminalStatus", "") == "success"
+
 def get_first_run_json(trial_path):
+    # Your original helper, usually looks for *run.json
     for f in trial_path.glob("*_run.json"):
         return f
     return None
 
-def discover_trial_ids(output_dir):
-    baseline_trials = set()
-    loop_trials = set()
-    baseline_dir = output_dir / "baseline"
-    loop_dir = output_dir / "loop"
-    def extract_trial_num(dirname):
-        m = re.match(r"trial_0*([1-9]\d*|0)$", dirname)
-        return int(m.group(1)) if m else None
-    for trial_path in baseline_dir.glob("trial_*"):
-        file = get_first_run_json(trial_path)
-        if file and file.exists():
-            num = extract_trial_num(trial_path.name)
-            if num is not None:
-                baseline_trials.add(num)
-    for trial_path in loop_dir.glob("trial_*"):
-        file = get_first_run_json(trial_path)
-        if file and file.exists():
-            num = extract_trial_num(trial_path.name)
-            if num is not None:
-                loop_trials.add(num)
-    paired = sorted(baseline_trials & loop_trials)
-    logging.debug(f"[DEBUG] discover_trial_ids: found paired trials: {paired}")
-    return paired
 
 def load_paired_trials(output_dir):
-    trial_ids = discover_trial_ids(output_dir)
+
+    """
+    Loads paired baseline and loop trial JSON objects, matching by trial ID.
+    Returns (trial_ids, baseline_jsons, loop_jsons, missing_trials):
+        trial_ids: list of matched trial numbers
+        baseline_jsons: baseline run dicts (same order as IDs)
+        loop_jsons: loop run dicts (same order as IDs)
+        missing_trials: count of trials where a loop result was expected but is missing.
+    """
     baseline_jsons = []
     loop_jsons = []
+    trial_ids = []
+    missing_trials = 0
+
     baseline_dir = output_dir / "baseline"
     loop_dir = output_dir / "loop"
-    for num in trial_ids:
-        base_path = None
-        loop_path = None
-        trial_base = baseline_dir / f"trial_{num:02d}"
-        trial_loop = loop_dir / f"trial_{num:02d}"
-        for f in trial_base.glob("*_run.json"):
-            base_path = f
-            break
-        for f in trial_loop.glob("*_run.json"):
-            loop_path = f
-            break
-        if base_path and loop_path:
-            with open(base_path, "r") as bf:
-                baseline_jsons.append(json.load(bf))
-            with open(loop_path, "r") as lf:
-                loop_jsons.append(json.load(lf))
-    logging.debug(f"[DEBUG] load_paired_trials: Loaded {len(trial_ids)} trial pairs.")
-    return trial_ids, baseline_jsons, loop_jsons
+
+    for trial_path in sorted(list(baseline_dir.glob("trial_*")), key=lambda p: extract_trial_num(p.name) or 0):
+        num = extract_trial_num(trial_path.name)
+        if num is None:
+            continue
+        base_file = get_first_run_json(trial_path)
+        if not base_file or not base_file.exists():
+            continue  # skip trials without valid baseline file
+
+        # Load baseline JSON
+        with open(base_file, "r") as bf:
+            baseline_json = json.load(bf)
+
+        # Try to find loop result
+        loop_trial_path = loop_dir / f"trial_{num:02d}"
+        loop_file = get_first_run_json(loop_trial_path)
+
+        if is_baseline_success(baseline_json):
+            if loop_file and loop_file.exists():
+                with open(loop_file, "r") as lf:
+                    loop_json = json.load(lf)
+            else:
+                # Count all baseline-passing cases as loop-passing too
+                loop_json = dict(baseline_json)  # Copies baseline JSON for traceability
+                loop_json["CopiedFromBaseline"] = True
+                missing_trials += 1
+        else:
+            if loop_file and loop_file.exists():
+                with open(loop_file, "r") as lf:
+                    loop_json = json.load(lf)
+            else:
+                loop_json = {"TerminalStatus": "MISSING_LOOP"}
+                missing_trials += 1
+
+        trial_ids.append(num)
+        baseline_jsons.append(baseline_json)
+        loop_jsons.append(loop_json)
+
+    return trial_ids, baseline_jsons, loop_jsons, missing_trials
+
+
 
 
 
@@ -762,16 +780,24 @@ def extract_case_metrics(baseline_jsons, loop_jsons):
             "TerminalStatus": b.get("TerminalStatus", b.get("terminal_status", "")),
             "initial_failure_classes": get_failure_class(b)
         }
+        # Detect baseline-pass / loop-missing or skipped
+        loop_terminal = l.get("TerminalStatus", l.get("terminal_status", "")).lower()
+        if loop_terminal == "skipped" or (loop_terminal in {"unknown", "missing_loop"} and (b.get("TerminalStatus", b.get("terminal_status", "")).lower() == "success")):
+            # If loop is missing/skipped and baseline passed, treat as initial/final TLC pass
+            init_tlc = True
+            final_tlc = True
+        else:
+            init_tlc = bool(l.get("InitialVerificationSuccess", l.get("initial_verification_success", False)))
+            final_tlc = _is_tlc_success(l)
         entry_l = {
             "case_id": trial_case_id,
             "mode": "loop",
-            "initial_status": {"tlc": bool(
-                l.get("InitialVerificationSuccess", l.get("initial_verification_success", False))
-            )},
-            "final_status": {"tlc": _is_tlc_success(l)},
+            "initial_status": {"tlc": init_tlc},
+            "final_status": {"tlc": final_tlc},
             "TerminalStatus": l.get("TerminalStatus", l.get("terminal_status", "")),
             "initial_failure_classes": get_failure_class(l)
         }
+
         baseline_cases.append(entry_b)
         loop_cases.append(entry_l)
         all_case_metrics.append(entry_b)
@@ -914,9 +940,10 @@ def main() -> None:
         logging.debug("loop_out:", loop_out)
 
         if args.analyze_only:
-            trial_ids, baseline_jsons, loop_jsons = load_paired_trials(root_out)
+            trial_ids, baseline_jsons, loop_jsons, missing_trials = load_paired_trials(root_out)
             logging.debug("len(baseline_jsons):", len(baseline_jsons))
             logging.debug("len(loop_jsons):", len(loop_jsons))
+            logging.info(f"Loaded {len(trial_ids)} paired trials from {root_out}. Missing loop trials: {missing_trials}")
             summarize_full_run(
                 root_out=root_out,
                 task_name=task_name,

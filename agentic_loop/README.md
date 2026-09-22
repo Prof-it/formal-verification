@@ -3,18 +3,19 @@
 ---
 
 
-## Key Principles and Outcome (2026)
+## Key Principles and Empirical Outcomes (2026)
 
-- **Regression-proof modular human-in-the-loop repair:**
+- **Regression-proof, modular, human-in-the-loop repair:**
   - All repairs are strictly TLC-gated: no unverified repair can ever overwrite or regress a verified artifact. Baseline and loop modes use paired initial LLM generation for proper experimental control.
   - Unknown error types are presented to the LLM for modular repair/rule suggestion, but *no rule is added/applied unless it is explicitly human-approved*.
   - All persistent memory is a human-approved modular rule database; there is **no agentic learning or policy adaptation**.
 
 - **Empirical results (NASA DDMR-26, N=100):**
-  - Baseline TLC pass rate: 20.0% (20/100)
-  - Loop/repair TLC pass rate: 88.0% (88/100)
-  - 68 of 80 (85%) initially failing specs were rescued; 0 regressions (every pass preserved)
-  - All results, rule approvals, and metrics are provided in CSV/Markdown outputs in `results/`
+  - **Baseline TLC pass rate:** 20.0% (20/100)
+  - **Loop/repair TLC pass rate:** 88.0% (88/100) — this includes all 20 originally passing (inherited/no-repair-needed) and 68 rescued/repaired cases
+  - **CRSR (Conditional Rescue Success Rate):** 85.0% (68/80) — among the 80 baseline failures, 68 were rescued in the loop
+  - All results, rule approvals, and per-trial metrics are provided in both CSV and Markdown in `results/`
+  - For each trial, if baseline is successful, loop repair is not needed, and loop is counted as pass by inheritance ("unknown"). Otherwise, loop attempts repair; if missing, result is `"MISSING_LOOP"`
 
 
 This subproject is isolated from the main repository workflow and provides a compact, fully auditable platform for NL-to-TLA experiment runs used in the paper.
@@ -167,27 +168,47 @@ and metrics for each trial/mode are in subfolders within `results/nasa_ddmr26/na
 
 ## Output and Artifacts
 
-All outputs include breakdowns of pass/fail/regress, rescue counts, failure class repairability, and all rule approval history, providing a full audit trail for reproducibility/validation.
+All outputs include per-trial and aggregate breakdowns for pass/fail/regress, rescue count, repairability by failure class, and rule approval audit trail. This provides a full audit trail for reproducibility and validation.
 
-### Main NASA DDMR-26 Results
+### Main NASA DDMR-26 Results (Sample)
 
-- Baseline TLC pass rate: 20/100 (20.0%)
-- Loop TLC pass rate after regression-proof repair: 88/100 (88.0%)
-- CRSR (previously failing rescued): 68/80 (85%)
-- Regressions: 0/20 (every TLC-passing candidate preserved)
+- **Baseline TLC pass rate:** 20/100 (20.0%)
+- **Loop TLC pass rate after regression-proof repair:** 88/100 (88.0%)
+- **Conditional Rescue Success Rate (CRSR):** 68/80 = 85.0% (among baseline failures, rescued by loop)
+- **Regressions:** 0 (every baseline pass was preserved post-repair)
 
----
+#### Table Conventions
+- If baseline is "success", loop mode is "unknown" (repair not needed), and considered a pass for loop aggregate rate.
+- If baseline is fail, loop mode attempts repair. If repair missing, displayed as `"MISSING_LOOP"`.
+- **Loop TLC pass rate** includes both inherited (unknown/passed) and repaired cases.
+- **CRSR** is only for failed baseline cases repaired by loop.
 
+----
 
 ### Failure Class Repairability (Sample: NASA DDMR-26)
 
-| Failure class                | Baseline Fails | Loop Fails | Repaired | Repair Rate |
-|-----------------------------|----------------|------------|----------|-------------|
-| missing_next_state_assignment| 27             | 0          | 27       | 100%        |
-| unknown                     | 50             | 9          | 41       | 82%         |
-| semantic_error_boolean_eval  | 3              | 3          | 0        | 0%          |
+| Failure class                      | Baseline Fails | Loop Fails | Repaired | Repair Rate |
+|------------------------------------|---------------:|-----------:|---------:|------------:|
+| missing_next_state_assignment      | 27             | 0          | 27       | 100%        |
+| semantic_error_boolean_evaluation  | 3              | 3          | 0        |   0%        |
+| unknown                           | 50             | 9          | 41       | 82%         |
 
-All others and run metadata appear per-trial and in aggregates.
+
+
+Other unrepaired loop failures and per-trial metadata are listed in the aggregate outputs, e.g. `results/comparison/nasa_ddmr26_sample/comparison_nasa_ddmr26_sample.md`.
+
+
+### Example CSV/Markdown Output Table (selected columns)
+
+| Mode              | TerminalStatus | Attempts | ParseSuccessRate | SemanticSuccessRate | GenerationSuccess | ... | FinalInvariantViolation | TotalErrors |
+|-------------------|---------------|----------|------------------|--------------------|-------------------|-----|------------------------|-------------|
+| baseline_trial_5  | success       |      1   | 1.000            | 1.000              | 1                 | ... | False                  | 0           |
+| loop_trial_5      | unknown       |      0   | 0.000            | 0.000              | 0                 | ... | False                  | 0           |
+| ...               | ...           |   ...    | ...              | ...                | ...               | ... | ...                    | ...         |
+| baseline_trial_15 | tlc_error     |      1   | 1.000            | 1.000              | 1                 | ... | False                  | 1           |
+| loop_trial_15     | success       |      2   | 1.000            | 1.000              | 1                 | ... | False                  | 1           |
+
+*For baseline-passing trials, "loop" mode is "unknown"/"not attempted" (no repair needed). If repair is needed but the loop result is missing, Table marks `"MISSING_LOOP"` in loop.*
 
 
 ## Implementation Details

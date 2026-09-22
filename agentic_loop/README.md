@@ -2,27 +2,31 @@
 
 ---
 
-## Recent Updates (August 2026)
 
-- **Expanded Failure Class Reporting:**
-  - The platform now provides more granular failure mode and failure class analysis in experiment outputs. Results for both the `baseline` and `loop` modes display breakdowns of failure classes in CSV and Markdown summaries, supporting deeper insight into verification and repair performance.
-- **Patch for CONSTANTS Handling:**
-  - Improved handling of TLA+ `CONSTANTS` in model generation/repair means the system now correctly supports and tracks constants during patch and repair cycles. Outputs/statistics now reflect these cases without conflating errors.
-- **Reporting of CRSR:**
-  - The "CRSR" class is now reported only for Loop mode, yielding more precise error-type statistics per experiment mode.
-- **Refactoring of engine.py:**
-  - Major internal refactoring of `src/agentic_loop/engine.py` improves code quality while maintaining the public CLI workflow. If you use internals, check the updated implementations for best practice alignment.
+## Key Principles and Outcome (2026)
+
+- **Regression-proof modular human-in-the-loop repair:**
+  - All repairs are strictly TLC-gated: no unverified repair can ever overwrite or regress a verified artifact. Baseline and loop modes use paired initial LLM generation for proper experimental control.
+  - Unknown error types are presented to the LLM for modular repair/rule suggestion, but *no rule is added/applied unless it is explicitly human-approved*.
+  - All persistent memory is a human-approved modular rule database; there is **no agentic learning or policy adaptation**.
+
+- **Empirical results (NASA DDMR-26, N=100):**
+  - Baseline TLC pass rate: 20.0% (20/100)
+  - Loop/repair TLC pass rate: 88.0% (88/100)
+  - 68 of 80 (85%) initially failing specs were rescued; 0 regressions (every pass preserved)
+  - All results, rule approvals, and metrics are provided in CSV/Markdown outputs in `results/`
 
 
-This subproject is isolated from the main repository workflow and provides a compact platform for NL-to-TLA experiment runs used in the paper.
+This subproject is isolated from the main repository workflow and provides a compact, fully auditable platform for NL-to-TLA experiment runs used in the paper.
 
 ## Scope
 
-- Reuses baseline prompt strategy (zero-shot and one-shot) for reproducible NL-to-TLA experiments.
-- Adds a verifier-in-the-loop repair cycle driven by TLC feedback.
-- Supports two experiment modes:
-  - `baseline`: one generation attempt
-  - `loop`: iterative repair up to `max_iterations`
+- Reproduces baseline and loop/repair modes from a paired initial LLM generation.
+- Implements modular, *regression-proof* verifier-in-the-loop repair, driven by TLC gate and explicit human rule approval.
+- No agentic "skills" or implicit learning: only human-reviewed rules are ever persisted.
+- Experiment modes:
+  - `baseline`: one-shot LLM generation, verification only
+  - `loop`: TLC-gated modular repair up to `max_iterations` (repair stops at first TLC pass or max attempts)
 
 ## Layout
 
@@ -41,10 +45,10 @@ pip install -r requirements.txt
 ```
 
 
-## Run Multi-Trial Baseline-vs-Loop Stochastic Comparison (Recommended)
 
-The recommended scientific workflow uses the `compare_cli` tool with multiple stochastic trials per mode.
-This supports robust statistics and reproducible empirical analysis.
+## How It Works: Recommended Workflow
+
+The main paired-verification experiment uses `compare_cli`, running multiple stochastic trials for both modes, always starting from paired initial generations. All repairs are regression-proof: any previously TLC-passing artifact is retained and cannot be overwritten, even if repairs are iterated. Results demonstrate large improvements in TLC success with no regressions.
 
 ### Using Live LLMs vs. Replay Mode
 
@@ -80,33 +84,38 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
 ```
 - Only use this if you have generated and stored all needed outputs in the `replay_outputs/` directory, with the correct configuration (task, prompt, model, etc.).
 
+
 #### Key parameters:
-- `--num-trials N` — Number of independent stochastic evaluations per mode (use 10+ for scientific confidence).
-- `--module-dir tla` — Directory with static TLA models and configs.
-- `--replay-dir replay_outputs` — Where replay TLA generation artifacts are stored (only needed for replay mode).
+- `--num-trials N` — Number of independent paired trials per mode (use 10+ for confidence)
+- `--module-dir tla` — Directory with static TLA models and configs
+- `--max-iterations K` — Maximum repair attempts per trial
+- `--prompt-mode` — Use `one_shot` for reliable reproducibility
 
 #### Output structure:
 
-Results will be saved in subdirectories for each trial and mode under `results/comparison/<task_name>/`, e.g.:
+
+Results are saved in subdirectories for each trial and mode under `results/comparison/<task_name>/`, e.g.:
+
 ```
-results/comparison/nasa_ddmr26/
+results/comparison/nasa_ddmr26_sample/
    baseline/
      trial_01/metrics.csv
      ...
-     trial_10/metrics.csv
+     trial_100/metrics.csv
    loop/
      trial_01/metrics.csv
      ...
-     trial_10/metrics.csv
-   comparison_nasa_ddmr26.csv      # Aggregated per-trial summary, all modes
-   comparison_nasa_ddmr26.md       # Markdown summary of all trials
+     trial_100/metrics.csv
+   comparison_nasa_ddmr26_sample.csv      # Aggregated per-trial summary
+   comparison_nasa_ddmr26_sample.md       # Markdown summary of all trials/results
 ```
-Each `metrics.csv` file contains all essential per-trial outcome details (parse/semantic/TLC/repair).
-The aggregate CSV and Markdown files summarize all trials for both modes.
+
+Each `metrics.csv`/`.json` gives all per-trial outcome details. Aggregate CSV/Markdown files include success rates, rescue counts, zero-regression statistics, CRSR, and class analysis.
+
 
 #### **When to use which mode**
-- `--provider openai` (default for most users):  Standard workflow for new analysis and recording new results.
-- `--provider replay`:  For paper reproducibility, audits, or CI, once all generations have been archived to disk.
+- `--provider openai` (default):  For new empirical runs and recording new results
+- `--provider replay`:  For reproducibility, audit, or CI, after outputs are recorded
 
 You may re-run with a different provider (e.g. `--provider openai --model gpt-4o`) or non-default seeds as needed.
 
@@ -155,36 +164,44 @@ and metrics for each trial/mode are in subfolders within `results/nasa_ddmr26/na
 
 ---
 
+
 ## Output and Artifacts
 
+All outputs include breakdowns of pass/fail/regress, rescue counts, failure class repairability, and all rule approval history, providing a full audit trail for reproducibility/validation.
 
-### Enhanced Failure Mode and Class Metrics
+### Main NASA DDMR-26 Results
 
-All experiment outputs now include further breakdown of failure mode and class, for both baseline and loop modes, making it easier to diagnose where repair processes succeed or fail. Metrics appear in each per-trial `metrics.csv`, plus summary CSV/Markdown, and now include exact logic regarding TLA+ `CONSTANTS` error handling. Consult the `results/comparison/<task_name>/comparison_<task_name>.csv` and corresponding `.md` for detailed breakdowns.
+- Baseline TLC pass rate: 20/100 (20.0%)
+- Loop TLC pass rate after regression-proof repair: 88/100 (88.0%)
+- CRSR (previously failing rescued): 68/80 (85%)
+- Regressions: 0/20 (every TLC-passing candidate preserved)
 
 ---
 
-### NASA DDMR-26 Baseline Assets
 
-- `tla/CLA.tla`: Reference CLA model
-- `tla/CLA.cfg`: TLC config for the reference model
-- `tla/CLA_generation_eval.cfg`: TLC config for generated or repaired modules
+### Failure Class Repairability (Sample: NASA DDMR-26)
 
-The NASA task YAML (`tasks/nasa_ddmr26_sample.yaml`) is evaluated against invariants (`TypeOK`, `DDMR26`) via `CLA_generation_eval.cfg`.
+| Failure class                | Baseline Fails | Loop Fails | Repaired | Repair Rate |
+|-----------------------------|----------------|------------|----------|-------------|
+| missing_next_state_assignment| 27             | 0          | 27       | 100%        |
+| unknown                     | 50             | 9          | 41       | 82%         |
+| semantic_error_boolean_eval  | 3              | 3          | 0        | 0%          |
 
-**For each experiment run**:
-- Aggregated metrics are written to `results/comparison/<task_name>/comparison_<task_name>.csv` and `.md`.
-- Each mode and each trial gets a subdirectory, e.g. `baseline/trial_01/metrics.csv`.
-- All per-attempt and per-trial details are included for scientific, publication-ready reporting.
+All others and run metadata appear per-trial and in aggregates.
 
-## Metric Instrumentation
 
-Automated runs persist the evaluation metrics enumerated in [`verifier_in_the_loop.tex`](agentic_loop/verifier_in_the_loop.tex:105). [`persist_run_result`](agentic_loop/src/agentic_loop/reporting.py:15) emits JSON fields for generation and verification success, counterexample statistics, skill usage traces, learning step indices, and human intervention flags. [`compare_cli`](agentic_loop/src/agentic_loop/compare_cli.py:37) consumes these values when producing CSV/Markdown summaries and can optionally aggregate learning efficiency across runs via `--learning-series` inputs.
+## Implementation Details
+
+- Human-in-the-loop repair, gated by TLC.
+- Modular rule approvals (no new rule applied without explicit user acceptance).
+- Rulebase is persistent and growing: all memory is via explicit rule acceptance, not implicit "learning" or experience.
+- All result metrics, rule approvals, skills, and failures are directly linked for each run.
 
 
 ## 📚 Publication
 
 This repository accompanies the following research contribution:
+
 
 - **Lu, T. (2026).** *Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26.* IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM), Paris, France, 26–27 October 2026. Camera-ready.
 

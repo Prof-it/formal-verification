@@ -1,5 +1,6 @@
 import numpy as np
 
+# Gather all per-attempt timings from both modes
 def collect_all_timings(baseline_jsons, loop_jsons):
     all_llm = []
     all_tlc = []
@@ -27,7 +28,6 @@ def timing_stats(times):
         round(float(np.max(times)), 2),
         len(times)
     )
-
 def fmt(v, width=5):
     if isinstance(v, (int, float)):
         return f"{v:>{width}.2f}"

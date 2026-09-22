@@ -6,7 +6,6 @@ import shutil
 import os
 import re
 import tempfile
-import math
 import numpy as np
 import logging
 logging.basicConfig(level=logging.WARNING)
@@ -14,18 +13,18 @@ logging.basicConfig(level=logging.WARNING)
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set
-from collections import Counter
 from dotenv import load_dotenv
-from statsmodels.stats.contingency_tables import mcnemar
+
 
 from .engine import run_experiment, validate_module_layout
 from .models import LoopConfig
 from .providers import build_provider
 from .utils.io_utils import purge_temp_modules
 from .core.copy_utils import copytree_symlink_safe
-
+from .metrics.stats_analysis import _is_tlc_success, mcnemar_analysis, mcnemar_csv, mcnemar_markdown, reclassify_attempts_with_final_rules
 from .task_loader import load_task_spec
-
+from .utils.timing_utils import collect_all_timings, timing_stats, fmt, fmt_int
+from .utils.tlc_error_utils import classify_tlc_error
 # Add dotenv support for automatic .env loading
 try:
     load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../../.env'))
@@ -571,202 +570,7 @@ def _write_case_metrics_csv(csv_path, case_metrics_list):
                     row[k] = json.dumps(v)
             writer.writerow(row)
 
-def _is_tlc_success(entry):
-    tlc_val = (entry.get("final_status") or {}).get("tlc", None)
-    if isinstance(tlc_val, bool):
-        return tlc_val
-    status = (entry.get("TerminalStatus") or entry.get("terminal_status", "") or "")
-    # Treat both "success" and "skipped" as TLC passes
-    return str(status).lower() in ("success", "skipped")
 
-def binom_coeff(n, k):
-    return math.comb(n, k)
-def mcnemar_analysis(baseline_cases, loop_cases, summary_path="mcnemar_summary.txt"):
-    before_after = []
-    # Index by case_id for robust matching
-    baseline_by_id = {c['case_id']: c for c in baseline_cases}
-    loop_by_id = {c['case_id']: c for c in loop_cases}
-    common_case_ids = sorted(set(baseline_by_id) & set(loop_by_id), key=trial_id_key)
-
-    for cid in common_case_ids:
-        base = baseline_by_id[cid]
-        loop = loop_by_id[cid]
-        base_tlc = _is_tlc_success(base)
-        loop_tlc = _is_tlc_success(loop)
-        before_after.append((base_tlc, loop_tlc))
-    # (rest is unchanged)
-
-    counts = Counter(before_after)
-    FF = counts[(False, False)]
-    FP = counts[(False, True)]   # Baseline fail, Loop pass: repaired!
-    PF = counts[(True, False)]   # Baseline pass, Loop fail: regression (should be 0)
-    PP = counts[(True, True)]
-    n = FF + FP + PF + PP
-
-    lines = []
-    lines.append("\nPaired TLC outcomes:\n")
-    lines.append("Initial TLC  | After TLC Fail | After TLC Pass |\n")
-    lines.append("-------------|----------------|---------------|\n")
-    lines.append(f"Fail         |   {FF:<14d}| {FP:<14d}|\n")
-    lines.append(f"Pass         |   {PF:<14d}| {PP:<14d}|\n")
-
-    lines.append(f"\nMcNemar's test on discordant pairs (Baseline fail→Loop pass={FP}, Baseline pass→Loop fail={PF})\n")
-    if mcnemar is not None:
-        table = [[FF, FP], [PF, PP]]
-        result = mcnemar(table, exact=True)
-        pval = None
-        # Try all known ways to get a p-value
-        if hasattr(result, "pvalue"):
-            pval = getattr(result, "pvalue")
-        elif hasattr(result, "__dict__") and "pvalue" in result.__dict__:
-            pval = result.__dict__["pvalue"]
-        elif isinstance(result, dict) and "pvalue" in result:
-            pval = result["pvalue"]
-        if pval is not None:
-            lines.append(f"McNemar p-value: {pval:.3g}\n")
-        else:
-            # Manual fallback: binomial p-value calculation for McNemar test (two-tailed) at p=0.5, only standard library.
-            b = FP
-            c = PF
-            discordant = b + c
-            if discordant > 0:
-                k = min(b, c)
-                # Two-sided: sum prob(X <= k) * 2 (for symmetry at p=0.5)
-                prob = sum(binom_coeff(discordant, i) * (0.5 ** discordant) for i in range(0, k+1))
-                p_conservative = 2 * prob
-                lines.append(f"Approximate binomial (no-scipy) p-value: {p_conservative:.3g}\n")
-            else:
-                lines.append("No discordant pairs: cannot compute binomial p-value.\n")
-    else:
-        lines.append("Install statsmodels or scipy for p-value.\n")
-
-    # Extra insight
-    if n > 0:
-        lines.append(f"Baseline TLC pass rate: {(PF+PP)/n:.1%}\n")
-        lines.append(f"Loop TLC pass rate:     {(FP+PP)/n:.1%}\n")
-    else:
-        lines.append("No paired cases for TLC pass rate.\n")
-
-
-    summary_text = "".join(lines)
-    logging.info(summary_text)
-    with open(summary_path, "w", encoding="utf-8") as out_f:
-        out_f.write(summary_text)
-    logging.info(f"\n==> McNemar summary written to {summary_path}")
-
-
-def mcnemar_markdown(baseline_cases, loop_cases, md_path="mcnemar_summary.md"):
-
-    # Patch: true pairing
-    before_after = []
-    # Index by case_id for robust matching
-    baseline_by_id = {c['case_id']: c for c in baseline_cases}
-    loop_by_id = {c['case_id']: c for c in loop_cases}
-    common_case_ids = sorted(set(baseline_by_id).intersection(set(loop_by_id)), key=trial_id_key)
-
-    for cid in common_case_ids:
-        base = baseline_by_id[cid]
-        loop = loop_by_id[cid]
-        base_tlc = _is_tlc_success(base)
-        loop_tlc = _is_tlc_success(loop)
-        before_after.append((base_tlc, loop_tlc))
-    counts = Counter(before_after)
-    FF = counts[(False, False)]
-    FP = counts[(False, True)]
-    PF = counts[(True, False)]
-    PP = counts[(True, True)]
-    table = f"""
-|                | After TLC Fail | After TLC Pass |
-|:---------------|:--------------|:--------------|
-| Before: Fail   | {FF}           | {FP}           |
-| Before: Pass   | {PF}           | {PP}           |
-"""
-    result = mcnemar([[FF, FP],[PF, PP]], exact=True)
-    total = FF + FP + PF + PP
-    md = (
-        "# Paired TLC outcome table (for McNemar's test)\n"
-        f"{table}\n"
-        f"McNemar p-value: {result.pvalue:.3g}\n"
-        f"Conditional repair success: {FP}/({FF+FP}) = {(FP/(FF+FP) if (FF+FP)>0 else 0):.1%}\n"
-    )
-    if total > 0:
-        md += (
-            f"Baseline TLC pass rate: {(PF+PP)/total:.1%}\n"
-            f"Loop TLC pass rate:     {(FP+PP)/total:.1%}\n"
-        )
-    else:
-        md += "No paired cases for TLC pass rate.\n"
-
-    with open(md_path, "w", encoding="utf-8") as out_f:
-        out_f.write(md)
-    logging.info(f"McNemar summary written to {md_path}")
-
-def mcnemar_csv(baseline_cases, loop_cases, csv_path="mcnemar_summary.csv"):
-    # Patch: true pairing
-    before_after = []
-    # Patch: true pairing
-    before_after = []
-    # Index by case_id for robust matching
-    baseline_by_id = {c['case_id']: c for c in baseline_cases}
-    loop_by_id = {c['case_id']: c for c in loop_cases}
-    common_case_ids = sorted(set(baseline_by_id).intersection(set(loop_by_id)), key=trial_id_key)
-
-    for cid in common_case_ids:
-        base = baseline_by_id[cid]
-        loop = loop_by_id[cid]
-        base_tlc = _is_tlc_success(base)
-        loop_tlc = _is_tlc_success(loop)
-        before_after.append((base_tlc, loop_tlc))
-        
-    counts = Counter(before_after)
-    FF = counts[(False, False)]
-    FP = counts[(False, True)]
-    PF = counts[(True, False)]
-    PP = counts[(True, True)]
-    with open(csv_path, "w", newline='', encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["", "After TLC Fail", "After TLC Pass"])
-        writer.writerow(["Before: Fail", FF, FP])
-        writer.writerow(["Before: Pass", PF, PP])
-    logging.info(f"McNemar table written to {csv_path}")
-
-# Gather all per-attempt timings from both modes
-def collect_all_timings(baseline_jsons, loop_jsons):
-    all_llm = []
-    all_tlc = []
-    all_ovh = []
-    all_total = []
-    all_runs = baseline_jsons + loop_jsons
-    for run in all_runs:
-        for attempt in run.get("attempts", []):
-            timing = attempt.get("timing", {})
-            # Only include attempts where timing is present and non-empty
-            if timing and "duration_llm" in timing:
-                all_llm.append(float(timing.get("duration_llm", 0)))
-                all_tlc.append(float(timing.get("duration_tlc", 0)))
-                all_ovh.append(float(timing.get("duration_engineering_overhead", 0)))
-                all_total.append(float(timing.get("duration_total", 0)))
-    return all_llm, all_tlc, all_ovh, all_total
-
-def timing_stats(times):
-    if not times:
-        return ("—", "—", "—", "—", 0)
-    return (
-        round(float(np.mean(times)), 2),
-        round(float(np.median(times)), 2),
-        round(float(np.min(times)), 2),
-        round(float(np.max(times)), 2),
-        len(times)
-    )
-def fmt(v, width=5):
-    if isinstance(v, (int, float)):
-        return f"{v:>{width}.2f}"
-    return f"{v:>{width}}"
-
-def fmt_int(v, width=3):
-    if isinstance(v, int):
-        return f"{v:>{width}d}"
-    return f"{v:>{width}}"
 
 
 # Failure class repairability table per mode
@@ -980,15 +784,6 @@ def extract_case_metrics(baseline_jsons, loop_jsons):
     return baseline_cases, loop_cases, all_case_metrics
 
 
-def trial_id_key(cid):
-    """
-    Extracts trailing integer from case_id for correct trial sorting.
-
-    - Supports: "trial_2", "baseline_trial_10", "loop_trial_07", etc.
-    - If pattern not matched, returns 0 (puts such IDs at the start).
-    """
-    m = re.search(r'(\d+)$', cid)
-    return int(m.group(1)) if m else 0
 
 def print_unknown_cases(case_metrics_list):
     for entry in case_metrics_list:
@@ -1129,6 +924,16 @@ def main() -> None:
                 loop_jsons=loop_jsons,
                 args=args,
             )
+            skills_db = None
+            skills_json_path = Path('skills.json')
+            if skills_json_path.exists():
+                with open(skills_json_path, encoding='utf-8') as f:
+                    skills_db = json.load(f)
+            else:
+                print('WARNING: skills.json not found; classification may not be accurate')
+                skills_db = []
+
+            reclassify_attempts_with_final_rules(loop_jsons, skills_db, classify_tlc_error)
             logging.debug(f"Analysis-only mode complete. {len(baseline_jsons)} trials analyzed.")
             return
 

@@ -9,7 +9,7 @@ import tempfile
 import numpy as np
 import logging
 # At the very TOP of your script, before any logging calls:
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.DEBUG)
 
 
 from dataclasses import dataclass, field
@@ -803,10 +803,13 @@ def extract_case_metrics(baseline_jsons, loop_jsons):
         all_case_metrics.append(entry_b)
         all_case_metrics.append(entry_l)
     logging.debug("DEBUG: After extract_case_metrics")
-    logging.debug("  Baseline final_status tlc: ", [c["final_status"]["tlc"] for c in baseline_cases])
-    logging.debug("  Loop final_status tlc: ", [c["final_status"]["tlc"] for c in loop_cases])
-    logging.debug("  Baseline TerminalStatus: ", [c.get("TerminalStatus", "") for c in baseline_cases])
-    logging.debug("  Loop TerminalStatus: ", [c.get("TerminalStatus", "") for c in loop_cases])
+    logging.debug("  Baseline final_status tlc: %s", [c["final_status"]["tlc"] for c in baseline_cases])
+    logging.debug("  Loop final_status tlc: %s", [c["final_status"]["tlc"] for c in loop_cases])
+    logging.debug("  Baseline TerminalStatus: %s", [c.get("TerminalStatus", "") for c in baseline_cases])
+    logging.debug("  Loop TerminalStatus: %s", [c.get("TerminalStatus", "") for c in loop_cases])
+    logging.debug("  baseline_cases len: %d", len(baseline_cases))
+    logging.debug("  loop_cases len: %d", len(loop_cases))
+
     return baseline_cases, loop_cases, all_case_metrics
 
 

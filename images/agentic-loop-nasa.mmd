@@ -1,35 +1,43 @@
 flowchart TD
-    %% Top section
-    R["Natural-Language Requirement"] --> P["Prompt Renderer"]
-    subgraph "Execution Modes"
-        BL["Baseline<br/>1 generation + 1 TLC"]
-        LP["Verifier-in-the-Loop<br/>≤ max_iterations"]
-    end
-    BL -.-> P
-    LP -.-> P
-    P --> G["LLM Provider"]
+    R["Natural-Language Requirement"]
+    G["LLM Generation"]
+    S["TLA+ Specification"]
+    T{{"TLC Verification"}}
 
-    %% TLC gate (main checkpoint -- XOR-like)
-    G --> S["TLA+ Snapshot Writer"]
-    S --> TGATE["((⊗))<br/>TLC Gate<br/>Regression-Proof"]
+    P["Persist Result"]
+    L{{"Repair Limit Reached?"}}
+    F["Persist Final Failure"]
 
-    %% If pass, commit output
-    TGATE -->|Pass| O["Persist Run Artifacts"]
+    M{{"Existing Skill Match?"}}
+    A["Apply Repair Skill"]
 
-    %% If error/violation, loop to repair
-    TGATE -->|Violation/Error| D["Diagnosis Instrumentation"]
-    D --> LLM_SKILL["LLM: Propose Modular Repair<br/>and Regex Rule"]
-    LLM_SKILL --> HA["🧑‍⚖️<br/>Human Approval Gate"]
-    HA -->|Approved| RULES["Rule DB<br/>(human-approved, persistent)"]
-    RULES --> RP["Repair Prompt<br/>TLC Feedback + Prior Spec"]
-    RP --> G
+    N["LLM Skill Proposal"]
+    H["👤 Human Approval"]
+    I["Human Instruction"]
+    NS["Generate Revised Skill"]
 
-    %% No autonomous agent memory, clarify in box
-    PERSIST["No autonomous learning<br/>All repair memory is approved Rule DB"] 
-    RULES --- PERSIST
+    RP["Repair Specification"]
 
-    %% Styling for highlights
-    style TGATE fill:#EAECF7,stroke:#4223C7,stroke-width:3px
-    style HA fill:#FFFACD,stroke:#FFB300,stroke-width:2px
-    style LLM_SKILL fill:#F0F0F0,stroke:#444,stroke-width:1px
-    style RULES fill:#DAE8FC,stroke:#156,stroke-width:1.5px
+    R --> G --> S --> T
+
+    T -->|Pass| P
+    T -->|Fail| L
+
+    L -->|Yes| F
+    L -->|No| M
+
+    M -->|Yes| A
+    M -->|No| N
+
+    N --> H
+    H -->|Y| A
+    H -->|N| I
+    I --> NS
+    NS --> A
+
+    A --> RP --> T
+
+    style T fill:#EAECF7,stroke:#4223C7,stroke-width:3px
+    style L fill:#EAECF7,stroke:#4223C7,stroke-width:2px
+    style M fill:#EAECF7,stroke:#4223C7,stroke-width:2px
+    style H fill:#FFFACD,stroke:#FFB300,stroke-width:2px

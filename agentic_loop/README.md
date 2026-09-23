@@ -1,62 +1,84 @@
-# Agentic Loop Paper Subproject
+
+# Agentic Loop: Verifier-Guided Repair of LLM-Generated Formal Specifications
 
 ---
 
+## Project Overview
 
-## Key Principles and Empirical Outcomes (2026)
+This subproject implements a **skill-mediated, verifier-in-the-loop workflow** for repairing LLM-generated TLA+ specifications, as introduced and evaluated in the companion paper:
 
-- **Regression-proof, modular, human-in-the-loop repair:**
-  - All repairs are strictly TLC-gated: no unverified repair can ever overwrite or regress a verified artifact. Baseline and loop modes use paired initial LLM generation for proper experimental control.
-  - Unknown error types are presented to the LLM for modular repair/rule suggestion, but *no rule is added/applied unless it is explicitly human-approved*.
-  - All persistent memory is a human-approved modular rule database; there is **no agentic learning or policy adaptation**.
+> **Lu, T. (2026)**. _Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26._ IEEE ETECOM 2026, Paris, France.
 
-- **Empirical results (NASA DDMR-26, N=100):**
-  - **Baseline TLC pass rate:** 20.0% (20/100)
-  - **Loop/repair TLC pass rate:** 88.0% (88/100) — this includes all 20 originally passing (inherited/no-repair-needed) and 68 rescued/repaired cases
-  - **CRSR (Conditional Rescue Success Rate):** 85.0% (68/80) — among the 80 baseline failures, 68 were rescued in the loop
-  - All results, rule approvals, and per-trial metrics are provided in both CSV and Markdown in `results/`
-  - For each trial, if baseline is successful, loop repair is not needed, and loop is counted as pass by inheritance ("unknown"). Otherwise, loop attempts repair; if missing, result is `"MISSING_LOOP"`
+The workflow combines LLM-based generation from natural-language requirements with TLC model checking, modular skill-based repair, and explicit human-in-the-loop governance for synthesizing new repair knowledge. This achieves **substantial increases in TLC verification coverage with strict regression-proofing and full auditability.**
 
+All experiment artifacts, generated models, TLC diagnostics, repair skills, logs, seeds, prompts, and result metrics are released for _full reproducibility_ ([see paper/link for dataset](https://github.com/Prof-it/formal-verification/tree/main/agentic_loop)).
 
-This subproject is isolated from the main repository workflow and provides a compact, fully auditable platform for NL-to-TLA experiment runs used in the paper.
+---
 
-## Scope
+## Verifier-in-the-Loop Architecture & Principles
 
-- Reproduces baseline and loop/repair modes from a paired initial LLM generation.
-- Implements modular, *regression-proof* verifier-in-the-loop repair, driven by TLC gate and explicit human rule approval.
-- No agentic "skills" or implicit learning: only human-reviewed rules are ever persisted.
-- Experiment modes:
-  - `baseline`: one-shot LLM generation, verification only
-  - `loop`: TLC-gated modular repair up to `max_iterations` (repair stops at first TLC pass or max attempts)
+- **Skill-mediated, regression-proof repair**
+  - A bounded repair loop applies reusable, human-approved repair skills to recognized TLC failures. Previously unrecognized failure types trigger LLM-generated skill proposals, which require explicit human approval before being added to the persistent skill registry.
+  - All repairs are strictly TLC-gated: no unverified fix can ever overwrite or regress an already TLC-passing artifact. _Structural regression to previously-passing artifacts is architecturally impossible._
+  - No model-parameter update or autonomous learning is present. _All memory is governed by explicit, human-accepted rules (skills)._
 
-## Layout
+- **Conditional workflow and experimental pairing**
+  - Each trial uses an identical initial LLM-generated TLA+ specification for both "baseline" (one-shot) and conditional repair evaluation. This ensures strict pairing and statistical validity.
+  - Only initially TLC-failing specs enter repair; initially passing specs are preserved by design and never modified in this workflow.
 
-- `prompts/`: baseline and repair prompt templates
-- `tasks/`: YAML task definitions
-- `src/agentic_loop/`: platform implementation
-- `results/`: run outputs (JSON and CSV)
+- **Transparency and modularity**
+  - The repair loop applies exactly one repair rule per attempt (modularity discipline). All LLM proposals are subject to explicit human review for rule acceptance.
+  - All experiment traces, configuration, rule decisions, TLC outputs, and artifact generations are fully logged for each trial.
+  
+![Agentic Loop Architecture](../images/agemtic-loop-nasa-vertical.png)
 
-## Install
+---
 
-```bash
-cd /Users/tianxiang.lu/dev/formal-verification/agentic_loop
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+## Key Experimental Results (NASA DDMR-26, N=100)
 
+|         | TLC Passes | TLC Fails | Attempted Repairs | Rescued | Repair Success Rate |
+|---------|------------|-----------|-------------------|---------|--------------------|
+| Baseline |    20      |    80     |      —            |   —     |       —            |
+| Loop    |    88      |    12     |      80           |   68    |   85.0% (CRSR)     |
 
+- **Baseline TLC pass rate:** 20.0% (20/100)
+- **Final (post-repair) TLC pass rate:** 88.0% (88/100)
+- **Conditional Rescue Success Rate (CRSR):** 68/80 = 85.0%
+- **Regressions:** 0 _(every initially TLC-passing artifact is preserved)_
+- **Statistical test:** McNemar's exact test on 68 discordant pairs, 0 regressions, $p=6.78 \times 10^{-21}$
 
-## How It Works: Recommended Workflow
+Full breakdown and per-class repairability analysis are included in [$results/`](results/).
 
-The main paired-verification experiment uses `compare_cli`, running multiple stochastic trials for both modes, always starting from paired initial generations. All repairs are regression-proof: any previously TLC-passing artifact is retained and cannot be overwritten, even if repairs are iterated. Results demonstrate large improvements in TLC success with no regressions.
+#### Failure Class Repairability (Selected)
 
-### Using Live LLMs vs. Replay Mode
+| Failure Pattern                          | Baseline Cases | Repair Attempts | Repairs | Rate    |
+|------------------------------------------|:--------------:|:--------------:|:-------:|:-------:|
+| Missing next-state assignment            |      27        |      29        |  27     | 93.1%   |
+| Generic operator/function hallucination  |      —         |      52        |  41     | 78.8%   |
+| IF/THEN/ELSE parse error                 |      —         |      4         |   4     | 100%    |
+| Semantic boolean evaluation              |       3        |      6         |   0     | 0%      |
+| Unmatched/unknown (coverage gap)         |      50        |     68         |  41     | 82%     |
 
-**By default, we recommend running with your LLM provider (e.g. OpenAI, GPT-4o) for "live" generations:**
+See also [$results/comparison_*/comparison_*.md`](results/) for full output table.
 
-**Example: NASA DDMR-26, 10 Trials, OpenAI Provider**
-```bash
+---
+
+## Main Method: Summary
+
+1. **Paired LLM Generation:** For each trial, a natural-language requirement (e.g., NASA DDMR-26) is converted to TLA+ via LLM using a domain scaffold, producing identical initial specs for both modes.
+2. **Baseline Verification:** The specification is first checked by TLC. If TLC passes, no repair is needed, and this spec is preserved.
+3. **Conditional Repair Loop:** If TLC fails, the diagnostic is mapped to a reusable repair skill, applying the fix. Unmatched diagnostics trigger LLM-suggested skill proposals, which _require explicit human acceptance_ before being added/persisted.
+4. **Iteration Limits:** Each TLC-failing trial may attempt up to two rounds of modular repair; rounds terminate on TLC success.
+5. **Full Audit:** All generations, TLC outputs, human approvals, rules, and metrics are persisted for downstream audit and reproducibility.
+
+---
+
+## Usage & Reproducing the Experiment
+
+The workflow is isolated, entirely auditable, and supports both _live LLM_ (e.g., OpenAI GPT-4o) and _replay_ (cached-output) runs:
+
+### Example CLI Run (10 trials, live LLM)
+```sh
 cd agentic_loop
 source .venv/bin/activate
 PYTHONPATH=src python -m agentic_loop.compare_cli \
@@ -69,162 +91,43 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
   --provider openai \
   --model gpt-4o \
   --output-dir results/comparison \
-  --num-trials 10
+  --num-trials 100
 ```
 
-- This calls the LLM API for each new trial, generating fresh output per run.
-- Use this for new projects, ongoing prompt improvements, or to explore genuine LLM variability.
-
-**For exact reproducibility and debugging:**
-Use replay mode to consume *pre-cached* LLM outputs and avoid API calls:
-```bash
+### Exact Replay (reproducibility/audit)
+```sh
 PYTHONPATH=src python -m agentic_loop.compare_cli \
   ... \
   --provider replay \
   --replay-dir replay_outputs
 ```
-- Only use this if you have generated and stored all needed outputs in the `replay_outputs/` directory, with the correct configuration (task, prompt, model, etc.).
 
+#### Output Structure:
+- Trial-by-trial metrics in `results/comparison/<taskname>/baseline/`, `.../loop/`, and `.csv`/`.md` summary tables.
+- All artifacts (TLA+, `.cfg`, diagnostics, prompts, rule approvals, human feedback) are saved.
 
-#### Key parameters:
-- `--num-trials N` — Number of independent paired trials per mode (use 10+ for confidence)
-- `--module-dir tla` — Directory with static TLA models and configs
-- `--max-iterations K` — Maximum repair attempts per trial
-- `--prompt-mode` — Use `one_shot` for reliable reproducibility
-
-#### Output structure:
-
-
-Results are saved in subdirectories for each trial and mode under `results/comparison/<task_name>/`, e.g.:
-
-```
-results/comparison/nasa_ddmr26_sample/
-   baseline/
-     trial_01/metrics.csv
-     ...
-     trial_100/metrics.csv
-   loop/
-     trial_01/metrics.csv
-     ...
-     trial_100/metrics.csv
-   comparison_nasa_ddmr26_sample.csv      # Aggregated per-trial summary
-   comparison_nasa_ddmr26_sample.md       # Markdown summary of all trials/results
-```
-
-Each `metrics.csv`/`.json` gives all per-trial outcome details. Aggregate CSV/Markdown files include success rates, rescue counts, zero-regression statistics, CRSR, and class analysis.
-
-
-#### **When to use which mode**
-- `--provider openai` (default):  For new empirical runs and recording new results
-- `--provider replay`:  For reproducibility, audit, or CI, after outputs are recorded
-
-You may re-run with a different provider (e.g. `--provider openai --model gpt-4o`) or non-default seeds as needed.
-
-
-## Reproducing the NASA DDMR26 Experiment
-
-To run the agentic loop comparison for the NASA DDMR26 sample task and save results under `results/nasa_ddmr26`:
-
-1. **Change into the agentic_loop directory:**
-   ```sh
-   cd /Users/tianxiang.lu/dev/formal-verification/agentic_loop
-   ```
-
-2. **Activate the Python virtual environment:**
-   ```sh
-   source .venv/bin/activate
-   ```
-
-3. **Run the experiment CLI:**
-   ```sh
-   PYTHONPATH=src python -m agentic_loop.compare_cli \
-     --task tasks/nasa_ddmr26_sample.yaml \
-     --tla-jar tla/tla2tools.jar \
-     --output-dir results/nasa_ddmr26 \
-     --prompts-dir prompts \
-     --prompt-mode one_shot \
-     --max-iterations 3 \
-     --provider openai \
-     --model gpt-4o \
-     --module-dir tla
-   ```
-
-**Result files** will appear in:
-```
-agentic_loop/results/nasa_ddmr26/nasa_ddmr26/comparison_nasa_ddmr26.csv
-agentic_loop/results/nasa_ddmr26/nasa_ddmr26/comparison_nasa_ddmr26.md
-```
-and metrics for each trial/mode are in subfolders within `results/nasa_ddmr26/nasa_ddmr26/`.
-
-**Requirements:**
-- `tla2tools.jar`, `CLA_Generated.tla`, `CLA_generation_eval.cfg`, and `manifest.json` must all be present in the `tla/` directory.
-- All commands should be run from within the `agentic_loop` directory.
+#### Requirements
+- `tla2tools.jar`, domain scaffold files (`CLA_Generated.tla`, `CLA_generation_eval.cfg`, etc.) must be available in `tla/`.
+- All commands are run from `/agentic_loop/`.
 
 ---
+
+## Implementation Highlights
+
+- Paired, regression-proof experiment control and result logging
+- Modular skill-based repair architecture with explicit _human-in-the-loop skill approval_ for every new repair strategy
+- TLC used as the authoritative executable verification signal for loop gating
+- Bounded repair iterations per trial
+- All experiment metadata, repair rules, TLC outputs, and human feedback are released (CSV, JSON, Markdown)
 
 
 ---
 
+## 📚 Publication & Citation
 
-## Output and Artifacts
+This repository accompanies:
 
-All outputs include per-trial and aggregate breakdowns for pass/fail/regress, rescue count, repairability by failure class, and rule approval audit trail. This provides a full audit trail for reproducibility and validation.
-
-### Main NASA DDMR-26 Results (Sample)
-
-- **Baseline TLC pass rate:** 20/100 (20.0%)
-- **Loop TLC pass rate after regression-proof repair:** 88/100 (88.0%)
-- **Conditional Rescue Success Rate (CRSR):** 68/80 = 85.0% (among baseline failures, rescued by loop)
-- **Regressions:** 0 (every baseline pass was preserved post-repair)
-
-#### Table Conventions
-- If baseline is "success", loop mode is "unknown" (repair not needed), and considered a pass for loop aggregate rate.
-- If baseline is fail, loop mode attempts repair. If repair missing, displayed as `"MISSING_LOOP"`.
-- **Loop TLC pass rate** includes both inherited (unknown/passed) and repaired cases.
-- **CRSR** is only for failed baseline cases repaired by loop.
-
-----
-
-### Failure Class Repairability (Sample: NASA DDMR-26)
-
-| Failure class                      | Baseline Fails | Loop Fails | Repaired | Repair Rate |
-|------------------------------------|---------------:|-----------:|---------:|------------:|
-| missing_next_state_assignment      | 27             | 0          | 27       | 100%        |
-| semantic_error_boolean_evaluation  | 3              | 3          | 0        |   0%        |
-| unknown                           | 50             | 9          | 41       | 82%         |
-
-
-
-Other unrepaired loop failures and per-trial metadata are listed in the aggregate outputs, e.g. `results/comparison/nasa_ddmr26_sample/comparison_nasa_ddmr26_sample.md`.
-
-
-### Example CSV/Markdown Output Table (selected columns)
-
-| Mode              | TerminalStatus | Attempts | ParseSuccessRate | SemanticSuccessRate | GenerationSuccess | ... | FinalInvariantViolation | TotalErrors |
-|-------------------|---------------|----------|------------------|--------------------|-------------------|-----|------------------------|-------------|
-| baseline_trial_5  | success       |      1   | 1.000            | 1.000              | 1                 | ... | False                  | 0           |
-| loop_trial_5      | unknown       |      0   | 0.000            | 0.000              | 0                 | ... | False                  | 0           |
-| ...               | ...           |   ...    | ...              | ...                | ...               | ... | ...                    | ...         |
-| baseline_trial_15 | tlc_error     |      1   | 1.000            | 1.000              | 1                 | ... | False                  | 1           |
-| loop_trial_15     | success       |      2   | 1.000            | 1.000              | 1                 | ... | False                  | 1           |
-
-*For baseline-passing trials, "loop" mode is "unknown"/"not attempted" (no repair needed). If repair is needed but the loop result is missing, Table marks `"MISSING_LOOP"` in loop.*
-
-
-## Implementation Details
-
-- Human-in-the-loop repair, gated by TLC.
-- Modular rule approvals (no new rule applied without explicit user acceptance).
-- Rulebase is persistent and growing: all memory is via explicit rule acceptance, not implicit "learning" or experience.
-- All result metrics, rule approvals, skills, and failures are directly linked for each run.
-
-
-## 📚 Publication
-
-This repository accompanies the following research contribution:
-
-
-- **Lu, T. (2026).** *Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26.* IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM), Paris, France, 26–27 October 2026. Camera-ready.
+**Lu, T. (2026).** _Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26_. In: _IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)_, Paris, France, 26–27 October 2026. Camera-ready.
 
 ```bibtex
 @inproceedings{lu2026verifier,

@@ -361,20 +361,24 @@ def run_experiment(
 
                    
 
-        if skill["key"] != "unknown":
-            logging.info(f"[Skill Patch] Attempt {attempt_id}: Applying skill '{skill['key']}' with strategy '{skill['strategy']}'")
 
+        if skill["key"] != "unknown":
+            # --- Always require explicit human approval for every new or revised candidate skill ---
+            is_new_candidate = pending_session_rule and skill["key"] == pending_session_rule.get("key")
+            if is_new_candidate:
+                decision, _, _ = prompt_human_for_skill_approval(skill, skill.get('suggested_skill', ''), modular_issue=False, suggestion_count=0)
+                if decision != 'pass':
+                    print("[Agentic Loop] Human approval is required for all new or revised skills. Aborting this repair attempt.")
+                    break
+
+            logging.info(f"[Skill Patch] Attempt {attempt_id}: Applying skill '{skill['key']}' with strategy '{skill['strategy']}'")
             attempt_record.skills_applied.append(skill["key"])
             applied_skill_keys.append(skill["key"])
 
-            # →→ NEW: Actually apply the strategy to the spec! ←←
-            # (pseudo-code, you need to implement apply_known_skill)
             logging.debug("[Skill Patch] Before patch:\n" + latest_spec)
             new_spec = apply_known_skill(latest_spec, skill)
             logging.debug("[Skill Patch] After patch:\n" + new_spec)
-            # Update the spec for next TLC attempt
             latest_spec = new_spec
-            # Write out the spec, same as you do after LLM edits
             module_snapshot = _write_module(module_dir, task.module_name, latest_spec, attempt_id)
             module_snapshot_str = str(module_snapshot)
 
@@ -438,9 +442,21 @@ def run_experiment(
             total_counterexamples_resolved += outstanding_counterexamples
             outstanding_counterexamples = 0
 
+
         if tlc.status == "success" and attempt_record.skills_applied:
             attempt_record.skills_successful = True
             successful_skill_uses += 1
+
+            # Persist new/revised skill to DB only after TLC success and explicit human approval
+            if pending_session_rule and attempt_record.skills_applied and (skill["key"] == pending_session_rule.get("key")):
+                SKILLS_DB_FILE = "skills.json"
+                file_db = load_skills(SKILLS_DB_FILE)
+                found = any(r.get('key') == pending_session_rule['key'] for r in file_db)
+                if not found:
+                    file_db.append(pending_session_rule)
+                    with open(SKILLS_DB_FILE, "w", encoding="utf-8") as f_sk:
+                        json.dump(file_db, f_sk, indent=2)
+                    print(f"[Agentic Loop] Persisted NEW/REVISED skill rule: {pending_session_rule.get('key','')}")
 
         if human_intervention_callback is not None:
             try:

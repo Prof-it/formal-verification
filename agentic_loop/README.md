@@ -30,7 +30,7 @@ All experiment artifacts, generated models, TLC diagnostics, repair skills, logs
   - The repair loop applies exactly one repair rule per attempt (modularity discipline). All LLM proposals are subject to explicit human review for rule acceptance.
   - All experiment traces, configuration, rule decisions, TLC outputs, and artifact generations are fully logged for each trial.
   
-![Agentic Loop Architecture](../images/agemtic-loop-nasa-vertical.png)
+![Agentic Loop Architecture](../images/AgenticControlLoop.drawio.png)
 
 ---
 

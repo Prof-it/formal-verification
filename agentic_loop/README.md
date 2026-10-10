@@ -69,7 +69,7 @@ See also [$results/comparison_*/comparison_*.md`](results/) for full output tabl
 2. **Baseline Verification:** The specification is first checked by TLC. If TLC passes, no repair is needed, and this spec is preserved.
 3. **Conditional Repair Loop:** If TLC fails, the diagnostic is mapped to a reusable repair skill, applying the fix. Unmatched diagnostics trigger LLM-suggested skill proposals, which _require explicit human acceptance_ before being added/persisted.
 4. **Iteration Limits:** Each TLC-failing trial may attempt up to two rounds of modular repair; rounds terminate on TLC success.
-5. **Full Audit:** All generations, TLC outputs, human approvals, rules, and metrics are persisted for downstream audit and reproducibility.
+72 | 5. **Full Audit:** All generated modules and configurations, TLC logs of failing attempts, run metadata, the final skill registry, and the re-scoring script and results are released. Rendered per-trial prompts, LLM sampling seeds and human approval decisions were not recorded for the reported run.
 
 ---
 
@@ -103,8 +103,8 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
 ```
 
 #### Output Structure:
-- Trial-by-trial metrics in `results/comparison/<taskname>/baseline/`, `.../loop/`, and `.csv`/`.md` summary tables.
-- All artifacts (TLA+, `.cfg`, diagnostics, prompts, rule approvals, human feedback) are saved.
+106 | - Trial-by-trial metrics in `results/comparison/<taskname>/baseline/`, `.../loop/`, and `rescoring_passes.csv`/`.md` summary tables.
+107 | - All generated modules and configurations, TLC logs of failing attempts, run metadata, the final skill registry, and the re-scoring script and results are released. Rendered per-trial prompts, LLM sampling seeds and human approval decisions were not recorded for the reported run.
 
 #### Requirements
 - `tla2tools.jar`, domain scaffold files (`CLA_Generated.tla`, `CLA_generation_eval.cfg`, etc.) must be available in `tla/`.

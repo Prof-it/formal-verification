@@ -1,0 +1,31 @@
+{
+  "states": 2,
+  "violation_time": "2025-07-12 08:25:00",
+  "events": [
+    [
+      "2025-07-12 08:25:00",
+      "StartProcessing",
+      2
+    ]
+  ],
+  "bars": [
+    [
+      "Processing",
+      "2025-07-12 08:25:00",
+      "None",
+      "proc"
+    ],
+    [
+      "Processing",
+      "2025-07-12 08:25:00",
+      "2025-07-12 08:25:00",
+      "unlawful"
+    ]
+  ],
+  "marks": [
+    [
+      "2025-07-12 08:25:00",
+      "violation (AllProcessingIsLawful, state 2)"
+    ]
+  ]
+}

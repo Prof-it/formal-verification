@@ -1,0 +1,48 @@
+\documentclass[tikz,border=1pt]{standalone}
+\usepackage{mathptmx}  % Times, as in the paper preamble
+\usetikzlibrary{patterns,arrows.meta,shapes.geometric}
+\begin{document}
+\footnotesize
+\begin{tikzpicture}[x=1.08cm,y=-0.62cm,
+  lane/.style={anchor=east,font=\footnotesize},
+  basis/.style={fill=black!18,draw=black!70},
+  proc/.style={fill=black!6,draw=black!70},
+  breach/.style={fill=black!6,draw=black!70},
+  unlawful/.style={pattern=north east lines,pattern color=red!80!black,draw=red!80!black,thick},
+  overdue/.style={pattern=north east lines,pattern color=red!80!black,draw=red!80!black,thick},
+  ev/.style={fill=black,draw=black,diamond,inner sep=1.4pt},
+  tick/.style={font=\scriptsize,align=center,anchor=north,inner sep=1pt}]
+
+\draw[black!15] (0,-0.45) -- (0,3.50);
+\node[tick] at (0,3.60) {07-12\\08:20};
+\draw[black!15] (1,-0.45) -- (1,3.50);
+\node[tick] at (1,3.60) {07-12\\08:25};
+\draw[black!15] (2,-0.45) -- (2,3.50);
+\node[tick] at (2,3.60) {07-12\\08:30};
+\draw[black!15] (3,-0.45) -- (3,3.50);
+\node[tick] at (3,3.60) {07-15\\08:30};
+\draw[black!15] (4,-0.45) -- (4,3.50);
+\node[tick] at (4,3.60) {07-15\\10:00};
+\node[lane] at (-0.3,0) {Events};
+\node[lane] at (-0.3,1) {Consent};
+\node[lane] at (-0.3,2) {Processing};
+\node[lane] at (-0.3,3) {Breach};
+\draw[basis] (0.00,0.72) rectangle (4.65,1.28);
+\draw[-{Stealth[length=3pt]},black!70] (4.65,1) -- ++(0.3,0);
+\draw[proc] (1.00,1.72) rectangle (4.65,2.28);
+\draw[-{Stealth[length=3pt]},black!70] (4.65,2) -- ++(0.3,0);
+\draw[breach] (2.00,2.72) rectangle (4.00,3.28);
+\draw[overdue] (3.00,2.72) rectangle (4.00,3.28);
+\node[ev] at (0,0) {};
+\node[font=\scriptsize,anchor=south west,rotate=35,inner sep=1pt] at (-0.05,-0.2) {GiveConsent};
+\node[ev] at (1,0) {};
+\node[font=\scriptsize,anchor=south west,rotate=35,inner sep=1pt] at (0.95,-0.2) {StartProcessing};
+\node[ev] at (2,0) {};
+\node[font=\scriptsize,anchor=south west,rotate=35,inner sep=1pt] at (1.95,-0.2) {DataBreachDetected};
+\node[ev] at (4,0) {};
+\node[font=\scriptsize,anchor=south west,rotate=35,inner sep=1pt] at (3.95,-0.2) {DataBreachReported};
+\draw[dashed,black] (3,-0.45) -- (3,3.50);
+\draw[red!80!black,thick] (4,-0.45) -- (4,3.50);
+\node[anchor=north west,font=\scriptsize,text width=6.90cm,xshift=-1.5cm] at (0,4.95) {\mbox{\tikz[x=1cm,y=1cm]\node[ev]{}; event}\hspace{0.8em plus 1em} \mbox{\tikz[x=1cm,y=1cm]\draw[basis](0,0)rectangle(.35,.18); legal basis}\hspace{0.8em plus 1em} \mbox{\tikz[x=1cm,y=1cm]\draw[proc](0,0)rectangle(.35,.18); processing / open breach}\hspace{0.8em plus 1em} \mbox{\tikz[x=1cm,y=1cm]\draw[unlawful](0,0)rectangle(.35,.18); violating interval}\hspace{0.8em plus 1em} \mbox{\tikz[x=1cm,y=1cm]\draw[dashed](0,0)--(0,.2); 72\,h deadline}\hspace{0.8em plus 1em} \mbox{\tikz[x=1cm,y=1cm]\draw[red!80!black,thick](0,0)--(0,.2); violating state}\hspace{0.8em plus 1em} \mbox{\tikz[x=1cm,y=1cm]\draw[-{Stealth[length=3pt]}](0,.1)--(.3,.1); still active}\par\smallskip\textit{Event-ordered axis: equal spacing; labels give real timestamps (MM-DD HH:MM).}};
+\end{tikzpicture}
+\end{document}

@@ -11,8 +11,7 @@ set -o pipefail
 GDPR_DIR="$(cd "$(dirname "$0")" && pwd)"
 TLA_DIR="$GDPR_DIR"
 TLA2TOOLS_JAR="$GDPR_DIR/../tla_modules/tla2tools.jar"
-TRACE2VIS_PIPELINE="$GDPR_DIR/trace2vis/tla_time_viz_pipeline.py"
-VENV_ACTIVATE="$GDPR_DIR/trace2vis/venv/bin/activate"
+
 
 # 1. Find all TLA+ modules and config files
 TLA_MODULES=("$GDPR_DIR"/*.tla)
@@ -35,8 +34,9 @@ for cfg in "${CFG_FILES[@]}"; do
   # Output file: base name without .cfg or any extension
   base="${cfg%.*}"
   out_file="$base.out"
+  json_file="$base.json"
   echo "[INFO] Running TLC for $cfg ..."
-  java -cp "$TLA2TOOLS_JAR" tlc2.TLC "$tla" -config "$cfg" > "$out_file" 2>&1 || ALL_OK=0
+  java -cp "$TLA2TOOLS_JAR" tlc2.TLC "$tla" -config "$cfg" -dumpTrace json "$json_file" > "$out_file" 2>&1 || ALL_OK=0
   # Check for errors in output
   if grep -q "Error:" "$out_file"; then
     echo "[ERROR] TLC found errors in $cfg (see $out_file)"
@@ -46,21 +46,19 @@ for cfg in "${CFG_FILES[@]}"; do
   fi
 done
 
-# 3. If all TLC runs succeeded, run the Python visualization pipeline
+# 3. If any violations found, run the new visualization (trace2tikz)
 if [[ $ALL_OK -eq 1 ]]; then
-  echo "[INFO] All TLC checks passed. No need to run visualization pipeline."
+  echo "[INFO] All TLC checks passed. No need to run visualization (trace2tikz)."
 else
-  echo "[INFO] Some violations found. Running visualization pipeline..."
-  if [[ -f "$VENV_ACTIVATE" ]]; then
-    OLD_PWD="$PWD"
-    cd "$GDPR_DIR/trace2vis"
-    source venv/bin/activate
-    python tla_time_viz_pipeline.py
-    cd "$OLD_PWD"
+  echo "[INFO] Some violations found. Running trace2tikz visualization pipeline..."
+  TRACE2TIKZ_SCRIPT="$GDPR_DIR/trace2tikz/make_figures.sh"
+  if [[ -f "$TRACE2TIKZ_SCRIPT" ]]; then
+    bash "$TRACE2TIKZ_SCRIPT" "$TLA2TOOLS_JAR" "$GDPR_DIR/trace2tikz/report"
   else
-    echo "[ERROR] Python venv not found at $VENV_ACTIVATE. Please set up the venv in trace2vis/."
+    echo "[ERROR] trace2tikz visualization script not found at $TRACE2TIKZ_SCRIPT."
   fi
 fi
+
 
 echo "[INFO] Regression test complete."
 

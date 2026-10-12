@@ -1,0 +1,47 @@
+{
+  "states": 5,
+  "violation_time": "2500-12-31 23:59:00",
+  "events": [
+    [
+      "2025-07-12 08:20:00",
+      "GiveConsent",
+      2
+    ],
+    [
+      "2025-07-12 08:30:00",
+      "StartProcessing",
+      3
+    ],
+    [
+      "2025-07-12 08:35:00",
+      "WithdrawConsent",
+      4
+    ]
+  ],
+  "bars": [
+    [
+      "Consent",
+      "2025-07-12 08:20:00",
+      "2025-07-12 08:35:00",
+      "basis"
+    ],
+    [
+      "Processing",
+      "2025-07-12 08:30:00",
+      "None",
+      "proc"
+    ],
+    [
+      "Processing",
+      "2025-07-12 08:35:00",
+      "2500-12-31 23:59:00",
+      "unlawful"
+    ]
+  ],
+  "marks": [
+    [
+      "2500-12-31 23:59:00",
+      "violation (AllProcessingIsLawful, state 5)"
+    ]
+  ]
+}

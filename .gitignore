@@ -81,3 +81,7 @@ agentic_loop/src/__pycache__/*
 agentic_loop/modules/*
 agentic_loop/figures/*
 agentic_loop/tasks/beginner/*
+gdpr/*_TTrace_*.tla
+gdpr/*_TTrace_*.bin
+gdpr/trace2tikz/report/states_*/*/*.fp
+gdpr/trace2tikz/report/states_*/*/*.st

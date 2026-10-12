@@ -41,7 +41,7 @@ VARIABLES
     incidents,
     breaches
 
-vars == <<now, events, processes, legalBases, incidents, breaches, rejected>>
+vars == <<rejected, now, events, processes, legalBases, incidents, breaches>>
 
 InitialTime == IF ObservedEvents = {} THEN
                    [year |-> Min({FixedEpochYear} \cup YearRange), month |-> 1, day |-> 1, hour |-> 0, minute |-> 0]
@@ -82,9 +82,8 @@ WithdrawConsent(e) ==
         /\ \E c \in legalBases: 
             c.type = "Consent" /\ c.subject = e.subject /\ c.data = e.data /\ c.end = FixedEndTime
         /\ LET consentToRemove == CHOOSE c \in legalBases:
-                              c.type = "Consent" /\ c.end = FixedEndTime
-                              /\ c.subject = e.subject /\ c.data = e.data
-                              
+                              c.type = "Consent" /\ c.subject = e.subject /\ c.data = e.data
+                              /\ c.end = FixedEndTime
            IN
             /\ events' = events \ {e}
             /\ now' = e.time
@@ -173,14 +172,14 @@ ComplianceIncident ==
                                             incidentTime |-> now
                                          ]
                                         }
-            /\ UNCHANGED <<now, processes, legalBases, events,breaches, rejected>>
+            /\ UNCHANGED <<rejected, now, processes, legalBases, events,breaches>>
 
 RecordIncident ==
     \E i \in incidents:
         /\ i.status = "Pending"
         /\ incidents' = (incidents \ {i}) 
                                 \cup {[i EXCEPT !.status = "Recorded"]}
-        /\ UNCHANGED <<now, processes, legalBases, events, breaches, rejected>>
+        /\ UNCHANGED <<rejected, now, processes, legalBases, events, breaches>>
 
 
 
@@ -191,14 +190,14 @@ TerminateProcess ==
     LET done == {p \in processes : ProcessIncidentRecorded(p) \/ ToMinutes(now) >= ToMinutes(p.end)}
     IN  /\ done # {}
         /\ processes' = processes \ done
-        /\ UNCHANGED <<now, legalBases, incidents, breaches, events, rejected>>
+        /\ UNCHANGED <<rejected, now, legalBases, incidents, breaches, events>>
 
 \* Removes events that are scheduled after the maximum allowed time
 RemoveUnreachableEvents ==
     \E e \in events:
         ToMinutes(e.time) > ToMinutes(FixedEndTime) /\
         events' = events \ {e} /\
-        UNCHANGED <<now, processes, legalBases, incidents, breaches, rejected>>
+        UNCHANGED <<rejected, now, processes, legalBases, incidents, breaches>>
 
 \* Advances now to the next event's time if no other actions are enabled
 TimeAdvance ==
@@ -208,7 +207,7 @@ TimeAdvance ==
     IN
         /\ ToMinutes(now) < ToMinutes(t)
         /\ now' = t
-        /\ UNCHANGED <<now, processes, legalBases, incidents, breaches, events, rejected>>
+        /\ UNCHANGED <<rejected, processes, legalBases, incidents, breaches, events>>
 
 ApplyEvent(e) ==
     \/ GiveConsent(e) \/ WithdrawConsent(e) \/ StartProcessing(e)

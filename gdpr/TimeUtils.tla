@@ -41,22 +41,14 @@ DaysInMonth ==
         [] i = 12 -> 31
     ]
 
-RECURSIVE DaysUpToMonth(_)
-
+\* Days in the months before tp.month of tp.year (Feb has 29 days in leap years).
+CumDays == <<0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334>>
 DaysUpToMonth(tp) ==
-    IF tp.month = 1
-    THEN 0
-    ELSE DaysUpToMonth([tp EXCEPT !.month = tp.month - 1])
-         + IF tp.month = 2 /\ IsLeapYear(tp.year)
-           THEN 29
-           ELSE DaysInMonth[tp.month - 1]
+    CumDays[tp.month] + (IF tp.month > 2 /\ IsLeapYear(tp.year) THEN 1 ELSE 0)
 
-
-
-
-LeapDaysSinceEpoch(y) ==
-    LET d == y - FixedEpochYear
-    IN  (d \div 4) - (d \div 100) + (d \div 400)
+\* Number of leap years y' with FixedEpochYear <= y' < y  (requires y >= FixedEpochYear).
+LeapsBefore(y) == ((y - 1) \div 4) - ((y - 1) \div 100) + ((y - 1) \div 400)
+LeapDaysSinceEpoch(y) == LeapsBefore(y) - LeapsBefore(FixedEpochYear)
 
 ToMinutes(tp) ==
     LET

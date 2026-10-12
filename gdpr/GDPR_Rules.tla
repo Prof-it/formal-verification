@@ -26,6 +26,10 @@ BreachReportedOnTime ==
                 /\ e.subject = b.event.subject
                 /\ e.data = b.event.data
                 /\ Within72Hours(b.event.time, e.time))
+(*Rule 0: Log well-formedness. Every observed event could be applied to the model state.
+  A violation means the log is malformed or out of order (e.g. a withdrawal without
+  an active consent), so the other verdicts must not be trusted.*)
+NoRejectedEvents == rejected = {}
 --------------------------------
 
 THEOREM Spec => []TypeInvariant

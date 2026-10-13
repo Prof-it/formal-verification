@@ -1,7 +1,7 @@
 # [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23287697.svg)](https://doi.org/10.5281/zenodo.23287697)
 
 
-# Agentic Loop: Verifier-Guided Repair of LLM-Generated Formal Specifications
+# Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26
 
 ---
 
@@ -129,12 +129,12 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
 
 This repository accompanies:
 
-**Lu, T. (2026).** _Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26_. In: _IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)_, Paris, France, 26–27 October 2026. Camera-ready.
+**Lu, T. (2026).** _Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26_. In: _IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)_, Paris, France, 26–27 October 2026. Camera-ready.
 
 ```bibtex
 @inproceedings{lu2026verifier,
   author    = {Lu, Tianxiang},
-  title     = {Verifier-Guided Repair of LLM-Generated Formal Specifications: A Paired Study on NASA DDMR-26},
+  title     = {Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26},
   booktitle = {IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)},
   year      = {2026},
   address   = {Paris, France},

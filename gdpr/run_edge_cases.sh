@@ -20,7 +20,7 @@ CONSTANTS
     FixedEndTime <- MC_MAX_TIME
 INVARIANT $inv
 CFG
-  out=$(java -cp "$JAR" tlc2.TLC -metadir /tmp/edge_states_$ev MC_Edge.tla -config /tmp/edge.cfg 2>&1)
+  out=$(java -cp "$JAR" tlc2.TLC -noGenerateSpecTE -metadir /tmp/edge_states_$ev MC_Edge.tla -config /tmp/edge.cfg 2>&1)
   if grep -q "Invariant $inv is violated" <<<"$out"; then got=violated; else got=holds; fi
   [[ $got == "$exp" ]] && r=OK || { r=FAIL; fail=1; }
   printf "%-5s %-14s %-24s expected=%-9s got=%s\n" "$r" "$ev" "$inv" "$exp" "$got"

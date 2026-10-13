@@ -30,7 +30,6 @@ Process ==[ subject: DataSubjects,
 
 \* DataBreach: minimal, only type and time (DPV-aligned)
 DataBreach == [event: Event, status: {"Pending", "Reported"}]
-Incident == [process: Process, status: {"Pending", "Recorded"}, incidentTime: TimePoint]
 
 VARIABLES
     rejected,   \* observed events that could not be applied (malformed or out-of-order log)
@@ -38,10 +37,9 @@ VARIABLES
     events,
     processes,
     legalBases,
-    incidents,
     breaches
 
-vars == <<rejected, now, events, processes, legalBases, incidents, breaches>>
+vars == <<rejected, now, events, processes, legalBases, breaches>>
 
 InitialTime == IF ObservedEvents = {} THEN
                    [year |-> Min({FixedEpochYear} \cup YearRange), month |-> 1, day |-> 1, hour |-> 0, minute |-> 0]
@@ -52,7 +50,6 @@ Init == /\ now = InitialTime
         /\ events = ObservedEvents
         /\ processes = {}
         /\ legalBases = {}
-        /\ incidents = {}
         /\ breaches = {}
         /\ rejected = {}
 
@@ -64,7 +61,7 @@ StartProcessing(e) ==
                                                     data |-> e.data,
                                                     start|-> e.time,
                                                      end |-> FixedEndTime ]}
-    /\ UNCHANGED <<legalBases, incidents, breaches>>
+    /\ UNCHANGED <<legalBases, breaches>>
 
 GiveConsent(e) ==
     /\ e.type = "GiveConsent"
@@ -75,7 +72,7 @@ GiveConsent(e) ==
                                                 data    |-> e.data,
                                                 start   |-> e.time,
                                                 end     |-> FixedEndTime]}
-    /\ UNCHANGED <<processes, incidents, breaches>>
+    /\ UNCHANGED <<processes, breaches>>
 
 WithdrawConsent(e) ==
         /\ e.type = "WithdrawConsent"
@@ -93,7 +90,7 @@ WithdrawConsent(e) ==
                                             data    |-> consentToRemove.data,
                                             start   |-> consentToRemove.start,
                                             end     |-> e.time ]}
-            /\ UNCHANGED <<processes, incidents, breaches>>
+            /\ UNCHANGED <<processes, breaches>>
 
 \* Action: Detect a data breach event (e.g., by hash/integrity/ransomware evidence)
 DetectDataBreach(e) ==
@@ -103,7 +100,7 @@ DetectDataBreach(e) ==
     /\ breaches' = breaches 
                                  \cup {[ event |-> e,
                                         status |-> "Pending"]}    
-    /\ UNCHANGED <<processes, legalBases, incidents>>
+    /\ UNCHANGED <<processes, legalBases>>
 
 BreachMatchBySubjectData(e) ==
     {b \in breaches : 
@@ -120,7 +117,7 @@ DataBreachReported(e) ==
         /\ now' = e.time
         /\ breaches' = (breaches \ {breachToReport}) 
                                      \cup {[ breachToReport EXCEPT !.status = "Reported"]}
-        /\ UNCHANGED <<processes, legalBases, incidents>>
+        /\ UNCHANGED <<processes, legalBases>>
 
 StartContract(e) ==
     /\ e.type = "StartContract"
@@ -131,7 +128,7 @@ StartContract(e) ==
                                                     data |-> e.data,
                                                    start |-> e.time,
                                                      end |-> FixedEndTime]}
-    /\ UNCHANGED <<processes, incidents, breaches>>
+    /\ UNCHANGED <<processes, breaches>>
 
 EndContract(e) ==
     /\ e.type = "EndContract"
@@ -150,7 +147,7 @@ EndContract(e) ==
                                         data    |-> contractToEnd.data,
                                         start   |-> contractToEnd.start,
                                         end     |-> e.time ]}
-        /\ UNCHANGED <<processes, incidents, breaches>>
+        /\ UNCHANGED <<processes, breaches>>
         
 HasLegalBasis(p) ==
     \E l \in legalBases:
@@ -159,45 +156,21 @@ HasLegalBasis(p) ==
         /\ TimeBetween(l.start, l.end, now)
         
 
-ProcessIncidentRecorded(p) ==
-    \E i \in incidents: i.process = p /\ i.status = "Pending"
-
-ComplianceIncident ==
-        \E p \in processes: 
-            /\ ~HasLegalBasis(p) 
-            /\ ~ProcessIncidentRecorded(p)
-            /\ incidents' = incidents 
-                                   \cup {[ process |-> p,
-                                            status |-> "Pending",
-                                            incidentTime |-> now
-                                         ]
-                                        }
-            /\ UNCHANGED <<rejected, now, processes, legalBases, events,breaches>>
-
-RecordIncident ==
-    \E i \in incidents:
-        /\ i.status = "Pending"
-        /\ incidents' = (incidents \ {i}) 
-                                \cup {[i EXCEPT !.status = "Recorded"]}
-        /\ UNCHANGED <<rejected, now, processes, legalBases, events, breaches>>
-
-
-
-\* TerminateProcess action: removes processes whose end time has passed or incidents have been recorded, and updates the processes set accordingly.
+\* TerminateProcess action: removes processes whose end time has passed, and updates the processes set accordingly.
 TerminateProcess ==
-    \* Removes, in one step, all processes that have ended or whose incident was recorded.
+    \* Removes, in one step, all processes that have ended.
     \* (Removing them one at a time creates 2^n interleavings that carry no information.)
-    LET done == {p \in processes : ProcessIncidentRecorded(p) \/ ToMinutes(now) >= ToMinutes(p.end)}
+    LET done == {p \in processes : ToMinutes(now) >= ToMinutes(p.end)}
     IN  /\ done # {}
         /\ processes' = processes \ done
-        /\ UNCHANGED <<rejected, now, legalBases, incidents, breaches, events>>
+        /\ UNCHANGED <<rejected, now, legalBases, breaches, events>>
 
 \* Removes events that are scheduled after the maximum allowed time
 RemoveUnreachableEvents ==
     \E e \in events:
         ToMinutes(e.time) > ToMinutes(FixedEndTime) /\
         events' = events \ {e} /\
-        UNCHANGED <<rejected, now, processes, legalBases, incidents, breaches>>
+        UNCHANGED <<rejected, now, processes, legalBases, breaches>>
 
 \* Advances now to the next event's time if no other actions are enabled
 TimeAdvance ==
@@ -207,7 +180,7 @@ TimeAdvance ==
     IN
         /\ ToMinutes(now) < ToMinutes(t)
         /\ now' = t
-        /\ UNCHANGED <<rejected, processes, legalBases, incidents, breaches, events>>
+        /\ UNCHANGED <<rejected, processes, legalBases, breaches, events>>
 
 ApplyEvent(e) ==
     \/ GiveConsent(e) \/ WithdrawConsent(e) \/ StartProcessing(e)
@@ -220,7 +193,7 @@ RejectEvent(e) ==
     /\ events' = events \ {e}
     /\ now' = e.time
     /\ rejected' = rejected \cup {e}
-    /\ UNCHANGED <<processes, legalBases, incidents, breaches>>
+    /\ UNCHANGED <<processes, legalBases, breaches>>
 
 Next ==
     \* Event-driven actions
@@ -229,8 +202,6 @@ Next ==
             /\ ((ApplyEvent(e) /\ UNCHANGED rejected) \/ RejectEvent(e))
         )
     \* State-driven actions
-    \/ ComplianceIncident
-    \/ RecordIncident
     \/ TerminateProcess
     \/ RemoveUnreachableEvents
     \/ TimeAdvance
@@ -245,7 +216,6 @@ TypeInvariant ==
     /\ events \subseteq ObservedEvents
     /\ processes \subseteq Process
     /\ legalBases \subseteq LegalBasis
-    /\ incidents \subseteq Incident
     /\ breaches \subseteq DataBreach
     /\ rejected \subseteq ObservedEvents
 

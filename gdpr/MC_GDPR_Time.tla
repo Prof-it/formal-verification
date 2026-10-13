@@ -120,13 +120,6 @@ MC_ObervedEventReportBreachNoViolation ==
 
 \* The original MC_InitialEvents is now deprecated and should not be used. Use MC_InitialEvent* constants instead.
     
-MC_Init ==
-    /\ now = MinTime(ObservedEvents)
-    /\ events = ObservedEvents
-    /\ processes = {}
-    /\ legalBases = {}
-    /\ incidents = {}
-
 
 
 =============================================================================

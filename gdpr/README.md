@@ -10,7 +10,6 @@ Each scenario is a finite set of timestamped events (`ObservedEvents`). TLC repl
 
 The model checks only the requirements formalised below, over the event history it is given. It is not a general GDPR compliance checker (see [Scope and limitations](#scope-and-limitations)).
 
-Changes made after the ICC'27 review, with reproduction steps and an ablation of each fix, are documented in [`REVIEW_FIXES.md`](REVIEW_FIXES.md).
 
 ***
 
@@ -34,7 +33,6 @@ Changes made after the ICC'27 review, with reproduction steps and an ablation of
 | `legalBases` | `Consent`/`Contract` records with start and end (`end = FixedEndTime` while open). |
 | `processes` | Processing activities with start and end (processes end only at the observation horizon). |
 | `breaches` | Detected breaches with status `Pending` or `Reported`. |
-| `incidents` | Unlawful processing found by the model, with status `Pending` or `Recorded`. |
 | `rejected` | Observed events that could not be applied in the current state. |
 
 ### Actions
@@ -47,8 +45,7 @@ Changes made after the ICC'27 review, with reproduction steps and an ablation of
 - `RejectEvent`: consumes an event whose precondition does not hold, e.g. a withdrawal without an open consent, and records it in `rejected`. This prevents a malformed log from silently blocking the rest of the replay.
 
 **State-driven:**
-- `ComplianceIncident` / `RecordIncident`: records processing without a legal basis.
-- `TerminateProcess`: removes, in one step, every process that has ended or whose incident was recorded.
+- `TerminateProcess`: removes, in one step, every process whose end time has been reached (only at the horizon, since processes have no other end).
 - `TimeAdvance`: moves `now` to the next event time. Once the log is exhausted, it moves `now` to the end of the observation horizon (`FixedEndTime`, 2500-12-31 23:59). This last step exposes violations that are never resolved, such as an unreported breach or processing that continues after consent ended.
 - `RemoveUnreachableEvents`: drops events after the horizon.
 
@@ -64,7 +61,7 @@ Changes made after the ICC'27 review, with reproduction steps and an ablation of
 | `NoRejectedEvents` | Every observed event could be applied. If this fails, the log is malformed or out of order and the other verdicts must not be trusted. |
 | `TypeInvariant` | All variables have their declared types. |
 
-The invariants are normative properties, not facts about the system. TLC is used to *find* behaviours that violate them, and each violation is returned as a trace.
+The invariants are normative properties, not facts about the system. TLC is used to *find* behaviours that violate them, and each violation is returned as a trace. The model detects violations; it does not model their remediation.
 
 ***
 
@@ -114,6 +111,30 @@ To add a scenario:
 2. Copy a `.cfg` file and point `ObservedEvents` at the new set.
 3. Choose the invariants to check.
 
+### Checking an event log
+
+`tools/check_log.py` is the ingestion step from a log to TLC. It:
+1. validates the events (known type, minute-resolution timestamp, year 2020–2500, duplicates reported);
+2. writes them as `ObservedEvents` into a generated module;
+3. runs TLC, by default once per (subject, data) projection and in parallel.
+
+```bash
+# a JSON log: [{"type": "GiveConsent", "time": "2025-07-12 08:20", "subject": "erni", "data": "emaildata"}, ...]
+python3 tools/check_log.py log.json --jar ../tla_modules/tla2tools.jar
+
+# one of the scenarios in MC_GDPR_Time.tla; keep the counterexamples for trace2tikz
+python3 tools/check_log.py --scenario MC_ObervedEventDeadlineViolation \
+        --jar ../tla_modules/tla2tools.jar --traces traces/
+
+# whole log in one run (needed for properties that relate several pairs)
+python3 tools/check_log.py log.json --jar ../tla_modules/tla2tools.jar --no-project
+```
+Timestamps must be in UTC with format `YYYY-MM-DD HH:MM`. By default the invariants `NoRejectedEvents`, `AllProcessingIsLawful`, `BreachReportedOnTime` and `TypeInvariant` are checked; select others with `--invariants`. The exit code is 0 if all hold, 1 on a violation and 2 on an error.
+
+How the two modes differ in what they report:
+- TLC stops at the first violation of a run, so `--no-project` reports one violation for the whole log, while projection reports one per violating pair.
+- The violating *state* can differ. In the whole log, an unrelated event may advance `now` past a deadline earlier; in the projection, the same violation is found at the next event of the pair or at the horizon. The verdict is the same.
+
 ### Timeline figures (`trace2tikz/`)
 
 ```bash
@@ -138,21 +159,66 @@ The axis is ordinal: time points are equally spaced and labelled with their real
 ### Tests
 
 ```bash
-./run_edge_cases.sh ../tla_modules/tla2tools.jar                     # edge cases, expected verdicts
-python3 tools/check_timeutils.py . ../tla_modules/tla2tools.jar     # ToMinutes vs Python datetime, 314 dates
-python3 gen_scale.py --sweep 5,10,20,40 --jar ../tla_modules/tla2tools.jar             # scaling, distinct timestamps
-python3 gen_scale.py --sweep 4,8,12 --mode ties --jar ../tla_modules/tla2tools.jar     # scaling, simultaneous events
+./regression_test.sh ../tla_modules/tla2tools.jar             # scenarios, edge cases, calendar check, figures
 ```
-`check_timeutils.py` lets TLC evaluate `ToMinutes` from this `TimeUtils.tla` on random and boundary dates between 2020 and 2500. It compares the results with Python's `datetime`.
+`regression_test.sh` checks every scenario configuration against its expected verdict, then runs the edge cases, the calendar check and `trace2tikz/make_figures.sh`; it exits with 0 only if all verdicts match. TLC output goes to `out/`, figures to `trace2tikz/report/`. Use `--no-figures` without a LaTeX installation.
+
+Individual checks:
+
+```bash
+J=../tla_modules/tla2tools.jar
+./run_edge_cases.sh $J                                        # edge cases, expected verdicts
+python3 tools/check_timeutils.py . $J                         # ToMinutes vs Python datetime, 314 dates
+python3 tools/diff_projection.py --jar $J --wellformed        # whole log vs projections, random logs
+python3 gen_scale.py --sweep 5,10,20,40 --jar $J              # scaling, distinct timestamps
+python3 gen_scale.py --sweep 4,8,12 --mode ties --jar $J      # scaling, simultaneous events
+python3 gen_scale.py --sweep 5,10,20,40 --mode unlawful --jar $J   # scaling, processing without legal basis
+python3 gen_scale.py 12 ties --json ties12.json               # same benchmark as a log for check_log.py
+```
+- `check_timeutils.py` lets TLC evaluate `ToMinutes` from this `TimeUtils.tla` on random and boundary dates between 2020 and 2500, and compares the results with Python's `datetime`.
+- `gen_scale.py` writes `MC_Scale.tla` and `MC_Scale.cfg` for each size and runs TLC. In `seq` and `ties` modes the logs are compliant; in `unlawful` mode no processing has a legal basis, and the sweep checks `NoRejectedEvents`, which holds, so that TLC explores the whole state space.
+- `diff_projection.py` generates random logs with 2–3 pairs, ties within and across pairs, and timestamps around the 72 h boundary. For each invariant separately, it checks that the whole-log verdict equals the disjunction of the projection verdicts. Without `--wellformed` the logs are uniformly random, and most of them are malformed; `--lawful 0.8` makes most pairs lawful, so that the cases where `AllProcessingIsLawful` holds are also covered.
 
 ***
 
 ## Scalability
 
-- **Distinct timestamps.** TLC follows a single replay path and the state count grows linearly: 10, 40, 160 and 320 events give 22, 82, 322 and 642 distinct states.
-- **Simultaneous events.** A group of *k* events with the same timestamp yields 2^k intermediate states (every subset of the group already applied); two groups of 12 give 8,194 states.
+- **Distinct timestamps.** TLC follows a single replay path and the state count grows linearly with the log, whether or not it is compliant. Compliant logs (`gen_scale.py`) of 10, 40, 160 and 320 events give 22, 82, 322 and 642 distinct states; logs of 5, 10, 20 and 40 processing events without any legal basis (`--mode unlawful`, checked against `NoRejectedEvents` so that TLC explores everything) give 12, 22, 42 and 82.
+- **Simultaneous events.** A group of *k* events with the same timestamp yields 2^k intermediate states (every subset of the group already applied); two groups of 12 give 8,194 states, two groups of 14 give 32,770.
 
-Both properties relate only events of the same data subject and data item. A log can therefore be split per (subject, data) and the parts checked independently. Ties then remain only between events of the same pair. This decomposition is sound only for such per-pair properties, and it is not implemented in this repository.
+Earlier versions also contained incident actions (`ComplianceIncident`, `RecordIncident`) that recorded unlawful processing and terminated the process. They could fire at every time point and in any order, so a log with unlawful processing did not finish: a 7-event log passed 800,000 states, and even 5 unlawful processing events did not complete within 120 s. No invariant depended on them, so they were removed; the same 7-event log now takes 16 states.
+
+
+Most of the interleavings between simultaneous events are irrelevant. Every invariant in `GDPR_Rules.tla` relates only events and records of the same data subject and data item: legal bases, processes, breaches and the rejection of an event are all matched on (subject, data). The order of simultaneous events of *different* pairs therefore cannot change a verdict.
+
+`tools/check_log.py` exploits this by checking each (subject, data) projection of the log in its own TLC run (see [Checking an event log](#checking-an-event-log)). Ties then remain only between events of the same pair. On the `ties` benchmark with 12 and 14 pairs, each projection has 6 distinct states, against 8,194 and 32,770 for the whole log.
+
+The cost is one TLC start (about 1 s of JVM start-up) per pair, run in parallel with `--jobs`. With few pairs, the whole-log run can therefore be faster in wall time: on the benchmark, projection is slower for 12 pairs (24 s vs 14 s) and faster from about 14 pairs (28 s vs 40 s).
+
+The decomposition is sound only for per-pair properties. A property that relates several data subjects, e.g. one breach notification covering many affected subjects, must be checked with `--no-project`. Equivalence of the verdicts is tested on random logs by `tools/diff_projection.py`.
+
+#### Projection Equivalence: Empirical Evidence
+
+We tested the equivalence of whole-log and per-(subject, data) projection checking extensively using the `tools/diff_projection.py` utility. Example commands:
+
+```bash
+python3 tools/diff_projection.py --jar $J --logs 40 --seed 7              # uniform random logs
+python3 tools/diff_projection.py --jar $J --logs 40 --seed 11 --wellformed
+python3 tools/diff_projection.py --jar $J --logs 40 --seed 13 --wellformed --lawful 0.8
+```
+Each run generates 40 random logs, each with 2–3 subject/data pairs and events around the 72-hour boundary, and checks the invariants both on the whole log and each projection. Every invariant is checked in its own TLC run, so that stopping at the first violation (whole-log) cannot hide a difference in the outcomes.
+
+**Results:**
+
+| Batch | NoRejectedEvents violated / holds | AllProcessingIsLawful violated / holds | BreachReportedOnTime violated / holds | Mismatches |
+|---|---|---|---|---|
+| seed 7, random | 36 / 4 | 29 / 11 | 26 / 14 | 0 of 120 |
+| seed 11, well-formed | 9 / 31 | 39 / 1 | 15 / 25 | 0 of 120 |
+| seed 13, well-formed, `--lawful 0.8` | 7 / 33 | 10 / 30 | 20 / 20 | 0 of 120 |
+
+In every batch, the verdict for each invariant on each log matched exactly between the whole-log and per-pair projections (0 mismatches of 120 comparisons in each case). This provides strong empirical confirmation that projection is sound **for this class of requirements**.
+
+**Why this decomposition is safe:** Every invariant and event precondition in `GDPR_Rules.tla` relates only to records of the same (subject, data) pair. Thus, the order of simultaneous events from different pairs or their separation into individual projections cannot affect the verdict—provided the property does not span multiple pairs. For any property that does (e.g., one breach notification covering multiple subjects), use `--no-project`.
 
 ***
 

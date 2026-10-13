@@ -1,64 +1,68 @@
 #!/bin/bash
-# Regression test for GDPR TLA+ modules and trace visualization
-# 1. Detect changes in any .tla file in gdpr/ (for CI: always run, for local: can use git diff)
-# 2. For each .cfg file, run TLC model checker using tla2tools.jar
-# 3. If all TLC runs succeed, run the Python visualization pipeline
+# Regression test for the GDPR TLA+ model and the trace visualization.
+#   1. every scenario configuration against its expected verdict
+#   2. edge cases (run_edge_cases.sh)
+#   3. ToMinutes against Python datetime (tools/check_timeutils.py)
+#   4. figures from the counterexamples (trace2tikz/make_figures.sh), unless --no-figures
+# Usage: ./regression_test.sh [path/to/tla2tools.jar] [--no-figures]
+# Exit code 0 only if every verdict matches. TLC output goes to gdpr/out/, figures to trace2tikz/report/.
 
-set -e
-set -o pipefail
+set -uo pipefail
 
-# Directory setup
 GDPR_DIR="$(cd "$(dirname "$0")" && pwd)"
-TLA_DIR="$GDPR_DIR"
-TLA2TOOLS_JAR="$GDPR_DIR/../tla_modules/tla2tools.jar"
+J="${1:-$GDPR_DIR/../tla_modules/tla2tools.jar}"
+[[ "$J" == --* ]] && J="$GDPR_DIR/../tla_modules/tla2tools.jar"
+[ -f "$J" ] || { echo "[ERROR] tla2tools.jar not found: $J" >&2; exit 2; }
+TLA2TOOLS_JAR="$(cd "$(dirname "$J")" && pwd)/$(basename "$J")"
+FIGURES=1; for arg in "$@"; do [[ "$arg" == --no-figures ]] && FIGURES=0; done
+OUT_DIR="$GDPR_DIR/out"
+mkdir -p "$OUT_DIR"
+cd "$GDPR_DIR"
+java -cp "$TLA2TOOLS_JAR" tlc2.TLC 2>&1 | grep -m1 "TLC2 Version" | sed 's/^/[INFO] /'
 
+FAIL=0
 
-# 1. Find all TLA+ modules and config files
-TLA_MODULES=("$GDPR_DIR"/*.tla)
-CFG_FILES=("$GDPR_DIR"/*.cfg)
-
-echo "[INFO] Checking TLA+ modules: ${TLA_MODULES[*]}"
-echo "[INFO] Checking config files: ${CFG_FILES[*]}"
-
-# 2. Run TLC model checker for each config
-ALL_OK=1
-for cfg in "${CFG_FILES[@]}"; do
-  # Derive the corresponding TLA module (assume MC_*.cfg -> MC_GDPR_Time.tla)
-  # Use MC_GDPR_Time.tla for all configs as per project structure
-  tla="$GDPR_DIR/MC_GDPR_Time.tla"
-  if [[ ! -f "$tla" ]]; then
-    echo "[ERROR] TLA+ module $tla not found for config $cfg"
-    ALL_OK=0
-    continue
-  fi
-  # Output file: base name without .cfg or any extension
-  base="${cfg%.*}"
-  out_file="$base.out"
-  json_file="$base.json"
-  echo "[INFO] Running TLC for $cfg ..."
-  java -cp "$TLA2TOOLS_JAR" tlc2.TLC "$tla" -config "$cfg" -dumpTrace json "$json_file" > "$out_file" 2>&1 || ALL_OK=0
-  # Check for errors in output
-  if grep -q "Error:" "$out_file"; then
-    echo "[ERROR] TLC found errors in $cfg (see $out_file)"
-    ALL_OK=0
+# 1. Scenarios: config, expected result ("holds" or the invariant expected to be violated).
+#    MC_Scale.cfg is not listed: it belongs to the generated MC_Scale.tla (gen_scale.py).
+echo "[INFO] 1. Scenarios"
+while read -r cfg expected; do
+  out_file="$OUT_DIR/$cfg.out"
+  java -cp "$TLA2TOOLS_JAR" tlc2.TLC -noGenerateSpecTE -metadir "$OUT_DIR/states_$cfg" \
+       -dumpTrace json "$OUT_DIR/$cfg.json" MC_GDPR_Time.tla -config "$cfg.cfg" > "$out_file" 2>&1
+  if grep -q "No error has been found" "$out_file"; then
+    got=holds
+  elif inv=$(grep -oE "Invariant [A-Za-z]+ is violated" "$out_file"); then
+    got=$(awk '{print $2}' <<<"$inv")
   else
-    echo "[INFO] TLC completed for $cfg (see $out_file)"
+    got="TLC-error"
   fi
-done
+  states=$(grep -oE "[0-9,]+ distinct states found, [0-9,]+ states left" "$out_file" | tail -1 | cut -d' ' -f1)
+  if [[ "$got" == "$expected" ]]; then r=OK; else r=FAIL; FAIL=1; fi
+  printf "  %-5s %-28s expected=%-22s got=%-22s states=%s\n" "$r" "$cfg" "$expected" "$got" "${states:--}"
+  [[ "$got" == "TLC-error" ]] && tail -5 "$out_file" | sed 's/^/        /'
+done <<'LIST'
+MC_GDPR_Time holds
+MC_ValidConsent holds
+MC_ReportBreachNoViolation holds
+MC_MissingConsent AllProcessingIsLawful
+MC_ConsentWithdrawn AllProcessingIsLawful
+MC_DeadlineViolation BreachReportedOnTime
+MC_ReportBreachLate BreachReportedOnTime
+LIST
 
-# 3. If any violations found, run the new visualization (trace2tikz)
-if [[ $ALL_OK -eq 1 ]]; then
-  echo "[INFO] All TLC checks passed. No need to run visualization (trace2tikz)."
-else
-  echo "[INFO] Some violations found. Running trace2tikz visualization pipeline..."
-  TRACE2TIKZ_SCRIPT="$GDPR_DIR/trace2tikz/make_figures.sh"
-  if [[ -f "$TRACE2TIKZ_SCRIPT" ]]; then
-    bash "$TRACE2TIKZ_SCRIPT" "$TLA2TOOLS_JAR" "$GDPR_DIR/trace2tikz/report"
-  else
-    echo "[ERROR] trace2tikz visualization script not found at $TRACE2TIKZ_SCRIPT."
-  fi
+# 2. Edge cases
+echo "[INFO] 2. Edge cases"
+./run_edge_cases.sh "$TLA2TOOLS_JAR" | sed 's/^/  /' || FAIL=1
+
+# 3. Calendar arithmetic
+echo "[INFO] 3. ToMinutes vs Python datetime"
+python3 tools/check_timeutils.py . "$TLA2TOOLS_JAR" | sed 's/^/  /' || FAIL=1
+
+# 4. Figures
+if [[ $FIGURES -eq 1 ]]; then
+  echo "[INFO] 4. Figures"
+  bash trace2tikz/make_figures.sh "$TLA2TOOLS_JAR" "$GDPR_DIR/trace2tikz/report" | sed 's/^/  /' || FAIL=1
 fi
 
-
-echo "[INFO] Regression test complete."
-
+if [[ $FAIL -eq 0 ]]; then echo "[INFO] Regression test passed."; else echo "[ERROR] Regression test FAILED."; fi
+exit $FAIL

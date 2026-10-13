@@ -113,7 +113,13 @@ def load_scenario(name: str, module: Path) -> list[dict]:
                            r"\s*subject\s*\|->\s*\"([^\"]+)\"\s*,\s*data\s*\|->\s*\"([^\"]+)\"\s*\]",
                            m.group(1), re.S):
         kv = dict(re.findall(r"(year|month|day|hour|minute)\s*\|->\s*(\d+)", rec.group(2)))
-        t = datetime(*(int(kv[k]) for k in ("year", "month", "day", "hour", "minute")))
+        t = datetime(
+            int(kv["year"]),
+            int(kv["month"]),
+            int(kv["day"]),
+            int(kv["hour"]),
+            int(kv["minute"])
+        )
         events.append({"type": rec.group(1), "time": t, "subject": rec.group(3), "data": rec.group(4)})
     return validate(events)
 

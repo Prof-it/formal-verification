@@ -19,7 +19,7 @@ The example system models a smart grid infrastructure that integrates:
 
 The formal verification process follows this workflow:
 
-![Workflow Diagram](workflow/workflow.drawio.png)
+![Workflow Diagram](images/workflowdiagram.drawio.svg)
 
 ## Module Structure
 
@@ -158,7 +158,7 @@ This repository includes a reusable empirical TLC workflow that can be applied t
 Run the default scenario suite:
 
 ```bash
-cd /Users/tianxiang.lu/dev/formal-verification
+cd formal-verification   # repository root
 ./run_tlc_validation.sh
 ./analyze_tlc_results.py
 ```
@@ -286,11 +286,11 @@ Include these with paper submission when possible:
 
 - `tla_modules/` - Main TLA+ specification modules
 - `tla_modules/tlc_configs/` - TLC model configuration files
-- `workflow/` - System architecture diagrams
+- `images/` - Workflow and architecture diagrams
 
 
 ```bash
-git clone https://github.com/yourusername/formal-verification.git
+git clone https://github.com/Prof-it/formal-verification.git
 ```
 
 ## Contributing

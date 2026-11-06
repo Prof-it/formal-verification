@@ -309,7 +309,7 @@ Unless a folder states otherwise, this repository is licensed under the [PolyFor
 
 Exceptions:
 
-- [`standards/agent-action-rules/`](standards/agent-action-rules/) is licensed under the Apache License 2.0, including commercial use, with attribution via its `NOTICE` file.
+- [`standards/agent-action-rules/`](standards/agent-action-rules/) is licensed under the Apache License 2.0, including commercial use, with attribution via its `NOTICE` file. DOI: [10.5281/zenodo.24014599](https://doi.org/10.5281/zenodo.24014599).
 - [`external/tla_examples/`](external/tla_examples/) is a third-party Git submodule under its own licence.
 
 To cite this repository, use the "Cite this repository" button on GitHub or [`CITATION.cff`](CITATION.cff).

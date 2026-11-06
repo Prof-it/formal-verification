@@ -1,5 +1,7 @@
 # Evaluable rules for externally effective agent actions
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24014599.svg)](https://doi.org/10.5281/zenodo.24014599)
+
 Seven rules for governing actions that AI agents take outside the system (approving, paying, writing to another system). Each rule is written two ways:
 
 - in **plain language**, so that people without a formal-methods background can read, review and apply it;
@@ -69,7 +71,9 @@ With two concurrent actions the state space grows beyond 9 million states; large
 
 ## How to cite
 
-> T. Lu, *Evaluable rules for externally effective agent actions* (version 1.0), 2026. https://github.com/Prof-it/formal-verification/tree/main/standards/agent-action-rules
+> T. Lu, *Evaluable rules for externally effective agent actions* (version 1.0), Zenodo, 2026. doi:[10.5281/zenodo.24014599](https://doi.org/10.5281/zenodo.24014599)
+
+Citation metadata: [`CITATION.cff`](CITATION.cff).
 
 ## Licence
 

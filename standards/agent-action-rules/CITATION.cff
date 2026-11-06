@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use these rules, please cite them as below."
+title: "Evaluable rules for externally effective agent actions"
+type: software
+version: "1.0"
+date-released: 2026-11-06
+doi: 10.5281/zenodo.24014599
+authors:
+  - family-names: Lu
+    given-names: Tianxiang
+    email: contact@dr.tianxiang.lu
+license: Apache-2.0
+repository-code: "https://github.com/Prof-it/formal-verification/tree/main/standards/agent-action-rules"
+keywords:
+  - agentic AI
+  - evaluation criteria
+  - evidence records
+  - TLA+
+  - model checking

@@ -19,7 +19,7 @@ The example system models a smart grid infrastructure that integrates:
 
 The formal verification process follows this workflow:
 
-![Workflow Diagram](images/workflowdiagram.drawio.svg)
+![Workflow Diagram](workflow/workflow.drawio.png)
 
 ## Module Structure
 
@@ -158,7 +158,7 @@ This repository includes a reusable empirical TLC workflow that can be applied t
 Run the default scenario suite:
 
 ```bash
-cd formal-verification   # repository root
+cd /Users/tianxiang.lu/dev/formal-verification
 ./run_tlc_validation.sh
 ./analyze_tlc_results.py
 ```
@@ -286,11 +286,12 @@ Include these with paper submission when possible:
 
 - `tla_modules/` - Main TLA+ specification modules
 - `tla_modules/tlc_configs/` - TLC model configuration files
-- `images/` - Workflow and architecture diagrams
+- `standards/agent-action-rules/` - Evaluable rules for externally effective agent actions (Apache-2.0)
+- `workflow/` - System architecture diagrams
 
 
 ```bash
-git clone https://github.com/Prof-it/formal-verification.git
+git clone https://github.com/yourusername/formal-verification.git
 ```
 
 ## Contributing
@@ -302,9 +303,16 @@ git clone https://github.com/Prof-it/formal-verification.git
 
 ## License
 
-This software is licensed for NON-COMMERCIAL use only. For commercial use, please contact prof.dr.rer.nat.lu@gmail.com.
+Copyright (c) 2025-2026 Dr. Tianxiang Lu.
 
-For more details, see the LICENSE file.
+Unless a folder states otherwise, this repository is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): free for research, teaching and other non-commercial use, with attribution. Commercial use requires a separate licence; please contact contact@dr.tianxiang.lu.
+
+Exceptions:
+
+- [`standards/agent-action-rules/`](standards/agent-action-rules/) is licensed under the Apache License 2.0, including commercial use, with attribution via its `NOTICE` file.
+- [`external/tla_examples/`](external/tla_examples/) is a third-party Git submodule under its own licence.
+
+To cite this repository, use the "Cite this repository" button on GitHub or [`CITATION.cff`](CITATION.cff).
 
 ## 📚 Publication
 

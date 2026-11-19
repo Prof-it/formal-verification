@@ -318,15 +318,22 @@ To cite this repository, use the "Cite this repository" button on GitHub or [`CI
 
 This repository accompanies the following research contribution:
 
-- **Lu, T. (2026).** *Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing.* Technologie und Organisation. Springer Gabler, 2026. [Camera-ready](https://link.springer.com/book/9783658515102)
+- **Lu, T. (2026).** Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing. In Reindl, C., Wecke, B., & Irnich, U. (Eds.), *Technologie und Organisation: Evidenzbasierte und praxistaugliche Impulse für eine gelungene Transformation* (pp. 363–387). Wiesbaden: Springer Fachmedien Wiesbaden. [https://doi.org/10.1007/978-3-658-51511-9_20](https://doi.org/10.1007/978-3-658-51511-9_20)  
+  ISBN: 978-3-658-51511-9
 
 ```bibtex
-@book{lu2026formal,
-  author    = {Lu, Tianxiang},
+@Inbook{Lu2026,
+  author    = {Tianxiang Lu},
+  editor    = {Cornelia Reindl and Bernhard Wecke and Ulrich Irnich},
   title     = {Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing},
-  series    = {Technologie und Organisation},
+  booktitle = {Technologie und Organisation: Evidenzbasierte und praxistaugliche Impulse f{\"u}r eine gelungene Transformation},
   year      = {2026},
-  publisher = {Springer Gabler},
-  note      = {Camera-ready}
+  publisher = {Springer Fachmedien Wiesbaden},
+  address   = {Wiesbaden},
+  pages     = {363--387},
+  abstract  = {P2P networks, IoT, blockchain, and quantum computing are enabling major advances in smart cities, digital twins, autonomous robotics, cyber defence, healthcare, and decentralized finance. As these technologies interconnect everything from urban infrastructure to medical devices and financial markets, they promise vast economic and societal benefits. Yet, their complexity and criticality expose them to unprecedented safety and security risks. Formal verification increasingly emerges as an essential discipline, enabling us to rigorously assure reliability, correctness, and trust in the foundations of tomorrow's digital society.},
+  isbn      = {978-3-658-51511-9},
+  doi       = {10.1007/978-3-658-51511-9_20},
+  url       = {https://doi.org/10.1007/978-3-658-51511-9_20}
 }
 ```

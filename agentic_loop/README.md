@@ -139,6 +139,6 @@ This repository accompanies:
   year      = {2026},
   address   = {Paris, France},
   month     = oct,
-  note      = {Camera-ready; conference scheduled for 26--27 October 2026}
+  note      = {to appear in IEEE Xplore}
 }
 ```

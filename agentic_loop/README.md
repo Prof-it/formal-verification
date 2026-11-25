@@ -9,77 +9,81 @@
 
 This subproject implements a **skill-mediated, verifier-in-the-loop workflow** for repairing LLM-generated TLA+ specifications, as introduced and evaluated in the companion paper:
 
-> **Lu, T. (2026)**. _Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26._ IEEE ETECOM 2026, Paris, France.
+> **Lu, T. (2026)**. _Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26._ IEEE ETECOM 2026, Paris, France. arXiv: _(link added on announcement)_.
 
-The workflow combines LLM-based generation from natural-language requirements with TLC model checking, modular skill-based repair, and explicit human-in-the-loop governance for synthesizing new repair knowledge. This achieves **substantial increases in TLC verification coverage with strict regression-proofing and full auditability.**
+The workflow combines LLM-based generation from natural-language requirements with TLC model checking, a single bounded repair attempt guided by TLC diagnostics and reusable repair skills, and an architecture for human-approved synthesis of new repair skills. The reported study is a **pilot**: one requirement, one LLM (GPT-4o), one repair attempt, a persistent order-dependent skill registry, and no no-skill control.
 
-All experiment artifacts, generated models, TLC diagnostics, repair skills, logs, seeds, prompts, and result metrics are released for _full reproducibility_ ([see paper/link for dataset](https://github.com/Prof-it/formal-verification/tree/main/agentic_loop)).
+Generated modules and configurations, TLC logs of failing attempts, run metadata, prompt templates, the final skill registry, and the re-scoring script with per-trial results are released (see also the [Zenodo archive](https://doi.org/10.5281/zenodo.23287697)). Rendered per-trial prompts, LLM sampling seeds and human approval decisions were **not** recorded for the reported run.
 
 ---
 
 ## Verifier-in-the-Loop Architecture & Principles
 
-- **Skill-mediated, regression-proof repair**
-  - A bounded repair loop applies reusable, human-approved repair skills to recognized TLC failures. Previously unrecognized failure types trigger LLM-generated skill proposals, which require explicit human approval before being added to the persistent skill registry.
-  - All repairs are strictly TLC-gated: no unverified fix can ever overwrite or regress an already TLC-passing artifact. _Structural regression to previously-passing artifacts is architecturally impossible._
-  - No model-parameter update or autonomous learning is present. _All memory is governed by explicit, human-accepted rules (skills)._
+- **Skill-mediated, TLC-gated repair**
+  - TLC acts as a gate: initially passing specifications terminate unchanged; failing specifications receive one repair attempt, guided by the TLC diagnostic and a matching skill from the registry.
+  - Unrecognized diagnostics trigger an LLM-generated skill proposal that a human must approve or reject (with a suggestion). An approved skill enters the persistent registry at approval, whether or not the repair succeeds.
+  - Because initially passing specifications never enter repair, repair cannot regress them. This is a property of the control flow, not an empirical result about repair quality.
+  - No model-parameter update or policy learning takes place.
 
 - **Conditional workflow and experimental pairing**
-  - Each trial uses an identical initial LLM-generated TLA+ specification for both "baseline" (one-shot) and conditional repair evaluation. This ensures strict pairing and statistical validity.
-  - Only initially TLC-failing specs enter repair; initially passing specs are preserved by design and never modified in this workflow.
+  - Baseline and repair arms use the identical initial LLM-generated specification for each trial; only the subsequent repair differs.
+  - The registry is not reset between trials, so trials are order-dependent and not statistically independent.
 
-- **Transparency and modularity**
-  - The repair loop applies exactly one repair rule per attempt (modularity discipline). All LLM proposals are subject to explicit human review for rule acceptance.
-  - All experiment traces, configuration, rule decisions, TLC outputs, and artifact generations are fully logged for each trial.
-  
+- **Modularity**
+  - Each repair skill addresses a single error type or root cause per attempt.
+
 ![Agentic Loop Architecture](../images/AgenticControlLoop.drawio.png)
 
 ---
 
 ## Key Experimental Results (NASA DDMR-26, N=100)
 
-|         | TLC Passes | TLC Fails | Attempted Repairs | Rescued | Repair Success Rate |
-|---------|------------|-----------|-------------------|---------|--------------------|
-| Baseline |    20      |    80     |      —            |   —     |       —            |
-| Loop    |    88      |    12     |      80           |   68    |   85.0% (CRSR)     |
+Two deliberately weak criteria are reported:
 
-- **Baseline TLC pass rate:** 20.0% (20/100)
-- **Final (post-repair) TLC pass rate:** 88.0% (88/100)
-- **Conditional Rescue Success Rate (CRSR):** 68/80 = 85.0%
-- **Regressions:** 0 _(every initially TLC-passing artifact is preserved)_
-- **Statistical test:** McNemar's exact test on 68 discordant pairs, 0 regressions, $p=6.78 \times 10^{-21}$
+- **Executable pass (EP):** TLC accepts the module and completes exploration under the configuration generated by the pipeline.
+- **Property pass (PP):** an EP-passing module additionally satisfies its own `TypeOK` and `DDMR26` under a fixed configuration (`SPECIFICATION Spec`, `INVARIANTS TypeOK DDMR26`, `CHECK_DEADLOCK FALSE`, `CONSTANT N = 3`).
 
-Full breakdown and per-class repairability analysis are included in [$results/`](results/).
+Neither criterion establishes semantic faithfulness to the natural-language requirement.
 
-#### Failure Class Repairability (Selected)
+| Criterion | Initial | Rescued (of 80) | Final | CRSR  |
+|-----------|:-------:|:---------------:|:-----:|:-----:|
+| EP        |   20    |       68        |  88   | 85.0% |
+| PP        |   19    |       56        |  75   | 70.0% |
 
-| Failure Pattern                          | Baseline Cases | Repair Attempts | Repairs | Rate    |
-|------------------------------------------|:--------------:|:--------------:|:-------:|:-------:|
-| Missing next-state assignment            |      27        |      29        |  27     | 93.1%   |
-| Generic operator/function hallucination  |      —         |      52        |  41     | 78.8%   |
-| IF/THEN/ELSE parse error                 |      —         |      4         |   4     | 100%    |
-| Semantic boolean evaluation              |       3        |      6         |   0     | 0%      |
-| Unmatched/unknown (coverage gap)         |      50        |     68         |  41     | 82%     |
+- The pipeline's generated TLC configurations omitted the encoded invariants in 87 of the 88 EP-passing runs, so EP does not imply that `TypeOK` or `DDMR26` was checked. PP re-scores the saved modules; it did not guide the loop. Per-trial results: [`rescoring_passes.csv`](rescoring_passes.csv).
+- 12 of the 68 EP rescues (and initially passing trial 94) violate `DDMR26`; `TypeOK` is never violated.
+- No significance test or confidence interval is reported, because the persistent registry makes trials order-dependent.
 
-See also [$results/comparison_*/comparison_*.md`](results/) for full output table.
+#### Trial-Level Rescue by First Matched Skill (80 repair trials)
+
+| Skill (first diagnostic)              | Trials | EP | PP |
+|---------------------------------------|:------:|:--:|:--:|
+| Unknown operator (`GENERIC_FN`)       |   45   | 40 | 34 |
+| Missing next-state assignment         |   27   | 27 | 21 |
+| IF/THEN/ELSE parse error              |    4   |  0 |  0 |
+| Boolean evaluation                    |    3   |  0 |  0 |
+| Incorrect function syntax             |    1   |  1 |  1 |
+| **Total**                             | **80** | **68** | **56** |
+
+All 80 first diagnostics matched a skill present in the final 17-skill registry; five skills fired and twelve were never triggered. Skill synthesis and human approval were therefore not exercised in this run, and without a no-skill control the rescues cannot be attributed to the skills. Further output tables are in [`results/`](results/).
 
 ---
 
 ## Main Method: Summary
 
-1. **Paired LLM Generation:** For each trial, a natural-language requirement (e.g., NASA DDMR-26) is converted to TLA+ via LLM using a domain scaffold, producing identical initial specs for both modes.
-2. **Baseline Verification:** The specification is first checked by TLC. If TLC passes, no repair is needed, and this spec is preserved.
-3. **Conditional Repair Loop:** If TLC fails, the diagnostic is mapped to a reusable repair skill, applying the fix. Unmatched diagnostics trigger LLM-suggested skill proposals, which _require explicit human acceptance_ before being added/persisted.
-4. **Iteration Limits:** Each TLC-failing trial may attempt up to two rounds of modular repair; rounds terminate on TLC success.
-72 | 5. **Full Audit:** All generated modules and configurations, TLC logs of failing attempts, run metadata, the final skill registry, and the re-scoring script and results are released. Rendered per-trial prompts, LLM sampling seeds and human approval decisions were not recorded for the reported run.
+1. **Paired LLM Generation:** For each trial, the natural-language requirement (NASA DDMR-26) is converted to TLA+ by the LLM using a domain-engineered scaffold; the same initial specification is used for both arms.
+2. **Baseline Verification:** TLC checks the specification under the pipeline-generated configuration. If it passes, the specification is kept unchanged.
+3. **Conditional Repair:** If TLC fails, the diagnostic is matched to a registry skill and the LLM regenerates the module once, using the TLC output and the skill. Unmatched diagnostics trigger an LLM skill proposal that requires explicit human approval.
+4. **Iteration Limit:** At most two attempts per trial: the initial generation and one repair (`max_iterations=2`).
+5. **Re-scoring:** Saved passing modules are re-checked against `TypeOK` and `DDMR26` (PP) with the released re-scoring script.
 
 ---
 
 ## Usage & Reproducing the Experiment
 
-The workflow is isolated, entirely auditable, and supports both _live LLM_ (e.g., OpenAI GPT-4o) and _replay_ (cached-output) runs:
+The workflow supports both _live LLM_ (e.g., OpenAI GPT-4o) and _replay_ (cached-output) runs. Live runs are not deterministic even at temperature 0, so they will not reproduce the reported numbers exactly; replay re-executes the saved outputs.
 
-### Example CLI Run (10 trials, live LLM)
+### Example CLI Run (100 trials, live LLM)
 ```sh
 cd agentic_loop
 source .venv/bin/activate
@@ -105,8 +109,7 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
 ```
 
 #### Output Structure:
-106 | - Trial-by-trial metrics in `results/comparison/<taskname>/baseline/`, `.../loop/`, and `rescoring_passes.csv`/`.md` summary tables.
-107 | - All generated modules and configurations, TLC logs of failing attempts, run metadata, the final skill registry, and the re-scoring script and results are released. Rendered per-trial prompts, LLM sampling seeds and human approval decisions were not recorded for the reported run.
+- Trial-by-trial metrics in `results/comparison/<taskname>/baseline/` and `.../loop/`, plus [`rescoring_passes.csv`](rescoring_passes.csv) with the per-trial re-scoring results.
 
 #### Requirements
 - `tla2tools.jar`, domain scaffold files (`CLA_Generated.tla`, `CLA_generation_eval.cfg`, etc.) must be available in `tla/`.
@@ -116,11 +119,11 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
 
 ## Implementation Highlights
 
-- Paired, regression-proof experiment control and result logging
-- Modular skill-based repair architecture with explicit _human-in-the-loop skill approval_ for every new repair strategy
-- TLC used as the authoritative executable verification signal for loop gating
-- Bounded repair iterations per trial
-- All experiment metadata, repair rules, TLC outputs, and human feedback are released (CSV, JSON, Markdown)
+- Paired baseline/repair experiment control with result logging
+- Modular skill-based repair with an architecture for _human-in-the-loop approval_ of newly synthesized skills
+- TLC as the executable verification signal for loop gating
+- One bounded repair attempt per trial
+- Released artifacts: generated modules and configurations, TLC logs of failing attempts, run metadata, final skill registry, re-scoring script and results (CSV, JSON, Markdown)
 
 
 ---
@@ -129,13 +132,13 @@ PYTHONPATH=src python -m agentic_loop.compare_cli \
 
 This repository accompanies:
 
-**Lu, T. (2026).** _Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26_. In: _IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)_, Paris, France, 26–27 October 2026. Camera-ready.
+**Lu, T. (2026).** _Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26_. In: _2026 IEEE International Conference on Emerging Trends in Engineering and Computing (ETECOM)_, Paris, France, 26–27 October 2026. To appear in IEEE Xplore.
 
 ```bibtex
 @inproceedings{lu2026verifier,
   author    = {Lu, Tianxiang},
-  title     = {Verifier-Guided Repair of LLM-Generated TLA+ Specifications: A Skill-Mediated Agentic Loop for NASA DDMR-26},
-  booktitle = {IEEE 2026 International Conference on Emerging Trends in Engineering and Computing (ETECOM)},
+  title     = {Verifier-Guided Repair of {LLM}-Generated {TLA+} Specifications: A Skill-Mediated Agentic Loop for {NASA DDMR-26}},
+  booktitle = {2026 IEEE International Conference on Emerging Trends in Engineering and Computing (ETECOM)},
   year      = {2026},
   address   = {Paris, France},
   month     = oct,

@@ -314,9 +314,18 @@ Exceptions:
 
 To cite this repository, use the "Cite this repository" button on GitHub or [`CITATION.cff`](CITATION.cff).
 
-## 📚 Publication
+## 📚 Publications
 
-This repository accompanies the following research contribution:
+This repository accompanies the following research contributions. Please cite the paper that matches the part of the repository you use.
+
+| Folder | Publication |
+|--------|-------------|
+| `tla_modules/` (P2P, IoT, blockchain, quantum models) | Lu (2026), Springer book chapter — see below |
+| `tla_modules/` (`AnomalyAlertModel`, `MainCheckRefinement*`, `run_tlc_validation.sh`) | Lu (2026), IEEE SmartNets — see below |
+| [`agentic_loop/`](agentic_loop/) | Lu (2026), IEEE ETECOM — citation in [`agentic_loop/README.md`](agentic_loop/README.md) |
+| [`gdpr/`](gdpr/) | Lu, Kneuper, John, Beenken (2027), ICC'27 — accepted, citation will follow |
+
+### Formal Verification in Modern Technologies (Springer, 2026)
 
 - **Lu, T. (2026).** Formal Verification in Modern Technologies: Safety Assurance for P2P, IoT, Blockchain, and Quantum Computing. In Reindl, C., Wecke, B., & Irnich, U. (Eds.), *Technologie und Organisation: Evidenzbasierte und praxistaugliche Impulse für eine gelungene Transformation* (pp. 363–387). Wiesbaden: Springer Fachmedien Wiesbaden. [https://doi.org/10.1007/978-3-658-51511-9_20](https://doi.org/10.1007/978-3-658-51511-9_20)  
   ISBN: 978-3-658-51511-9
@@ -335,5 +344,22 @@ This repository accompanies the following research contribution:
   isbn      = {978-3-658-51511-9},
   doi       = {10.1007/978-3-658-51511-9_20},
   url       = {https://doi.org/10.1007/978-3-658-51511-9_20}
+}
+```
+
+### Neural-Symbolic Verification of Blockchain-Enabled IoT Systems (IEEE SmartNets, 2026)
+
+- **Lu, T. (2026).** Neural-Symbolic Verification of Blockchain-Enabled IoT Systems via Refinement Mapping in TLA+. In *2026 International Conference on Smart Applications, Communications and Networking (SmartNets)*, pp. 1–4. IEEE. [https://doi.org/10.1109/SmartNets69662.2026.11604597](https://doi.org/10.1109/SmartNets69662.2026.11604597)
+
+```bibtex
+@inproceedings{lu2026smartnets,
+  author    = {Tianxiang Lu},
+  title     = {Neural-Symbolic Verification of Blockchain-Enabled {IoT} Systems via Refinement Mapping in {TLA+}},
+  booktitle = {2026 International Conference on Smart Applications, Communications and Networking (SmartNets)},
+  year      = {2026},
+  pages     = {1--4},
+  publisher = {IEEE},
+  doi       = {10.1109/SmartNets69662.2026.11604597},
+  url       = {https://doi.org/10.1109/SmartNets69662.2026.11604597}
 }
 ```
